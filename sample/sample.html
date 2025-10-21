@@ -3,44 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>合成音声コーパス作成支援アプリ</title>
+    <title>Koerec - 高速音声コーパス作成ツール</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-        }
-        .record-btn.recording .fa-microphone {
-            display: none;
-        }
-        .record-btn:not(.recording) .fa-stop {
-            display: none;
-        }
-        .record-btn.recording {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .record-btn.recording .fa-microphone { display: none; }
+        .record-btn:not(.recording) .fa-stop { display: none; }
+        .record-btn.recording { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .shortcut-key { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.25rem; padding: 0.1rem 0.4rem; font-family: monospace; font-size: 0.8em; color: #374151; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .modal-overlay { transition: opacity 0.3s ease; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
 
-    <div id="app-container" class="w-full max-w-2xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-lg">
+    <div id="app-container" class="w-full max-w-3xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-xl">
         
         <!-- 初期画面 -->
         <div id="initial-screen">
-            <h1 class="text-3xl font-bold text-center mb-4">コーパス作成支援アプリ</h1>
-            <p class="text-gray-600 text-center mb-8">読み上げる台本のセットを選択してください。</p>
+            <h1 class="text-4xl font-bold text-center mb-2">Koerec</h1>
+            <p class="text-gray-600 text-center mb-8">高速音声コーパス作成ツール (進捗保存対応)</p>
             <div class="flex flex-col items-center">
-                <select id="script-select" class="w-full max-w-xs p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <!-- Options will be populated by JS -->
-                </select>
-                <button id="start-btn" class="mt-6 w-full max-w-xs bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                    開始
+                <select id="script-select" class="w-full max-w-sm p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                <button id="start-btn" class="mt-6 w-full max-w-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    録音開始
                 </button>
             </div>
         </div>
@@ -51,298 +39,261 @@
                 <h2 id="script-title" class="text-xl font-bold"></h2>
                 <span id="progress-indicator" class="text-sm font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full"></span>
             </div>
-            
-            <div id="text-display" class="bg-gray-50 p-8 rounded-lg text-center text-3xl font-semibold my-6 border border-gray-200 min-h-[150px] flex items-center justify-center">
-                <!-- Text will be displayed here -->
+            <div id="text-display" class="bg-gray-50 p-6 rounded-lg text-center text-4xl font-semibold my-5 border border-gray-200 min-h-[150px] flex items-center justify-center"></div>
+            <div class="w-full h-24 bg-gray-900 rounded-lg mb-5 overflow-hidden"><canvas id="waveform-canvas" class="w-full h-full"></canvas></div>
+            <div class="flex items-center justify-center space-x-6 mb-6">
+                <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none"><i class="fas fa-microphone"></i><i class="fas fa-stop"></i></button>
+                <div class="text-center">
+                    <p id="status-text" class="text-lg text-gray-700 font-medium w-48"></p>
+                    <div id="playback-controls" class="hidden items-center justify-center mt-2">
+                        <audio id="audio-player" class="hidden"></audio>
+                        <button id="play-btn" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-blue-500 transition"><i class="fas fa-play"></i></button>
+                    </div>
+                </div>
+                <button id="next-btn" class="w-20 h-20 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed"><i class="fas fa-arrow-right"></i></button>
             </div>
-            
-            <div class="flex flex-col items-center space-y-5">
-                <div class="flex items-center space-x-4">
-                    <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
-                        <i class="fas fa-microphone"></i>
-                        <i class="fas fa-stop"></i>
-                    </button>
-                    <p id="status-text" class="text-gray-600 font-medium w-32 text-center">録音ボタンを押してください</p>
-                </div>
-                
-                <div id="audio-playback-area" class="w-full max-w-md hidden">
-                     <audio id="audio-player" controls class="w-full"></audio>
-                </div>
-
-                <button id="next-btn" class="w-full max-w-md bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    決定して次へ (Enter)
-                </button>
-                 <button id="rerecord-btn" class="hidden w-full max-w-md bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                    もう一度録音する
-                </button>
+            <div id="shortcut-guide" class="text-center text-gray-500 p-4 border-t border-gray-200 grid grid-cols-3 gap-2">
+                <div><span class="shortcut-key">Space</span> 録音/停止/再録音</div>
+                <div><span class="shortcut-key">Enter</span> 次へ</div>
+                <div><span class="shortcut-key">P</span> 再生</div>
+                <div class="col-start-3"><span class="shortcut-key">Backspace</span> 戻る</div>
             </div>
         </div>
 
         <!-- 完了画面 -->
         <div id="completion-screen" class="hidden text-center">
-            <h1 class="text-3xl font-bold mb-4">お疲れ様でした！</h1>
-            <p class="text-gray-600 mb-8">すべての文章の録音が完了しました。下のボタンからデータをダウンロードしてください。</p>
+            <h1 class="text-3xl font-bold mb-4">録音完了！</h1>
+            <p class="text-gray-600 mb-8">すべての文章の録音が完了しました。データ一式をダウンロードしてください。</p>
             <div id="download-spinner" class="hidden my-4">
                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
                  <p class="mt-2 text-sm text-gray-500">Zipファイルを生成中です...</p>
             </div>
-            <button id="download-btn" class="w-full max-w-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                音声とテキストをダウンロード
-            </button>
-             <button id="restart-btn" class="mt-4 w-full max-w-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                最初からやり直す
-            </button>
+            <button id="download-btn" class="w-full max-w-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">ダウンロード</button>
+             <button id="restart-btn" class="mt-4 w-full max-w-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">最初からやり直す</button>
         </div>
-
+    </div>
+    
+    <!-- 再開確認モーダル -->
+    <div id="resume-modal" class="modal-overlay fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 class="text-lg font-bold mb-4">進捗の再開</h3>
+            <p id="resume-text" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="resume-new-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">初めから</button>
+                <button id="resume-continue-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">続きから再開</button>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM要素 ---
-            const initialScreen = document.getElementById('initial-screen');
-            const recordingScreen = document.getElementById('recording-screen');
-            const completionScreen = document.getElementById('completion-screen');
+            // --- DOM Elements ---
+            const initialScreen = document.getElementById('initial-screen'), recordingScreen = document.getElementById('recording-screen'), completionScreen = document.getElementById('completion-screen'), scriptSelect = document.getElementById('script-select'), startBtn = document.getElementById('start-btn'), scriptTitle = document.getElementById('script-title'), progressIndicator = document.getElementById('progress-indicator'), textDisplay = document.getElementById('text-display'), recordBtn = document.getElementById('record-btn'), statusText = document.getElementById('status-text'), playbackControls = document.getElementById('playback-controls'), audioPlayer = document.getElementById('audio-player'), playBtn = document.getElementById('play-btn'), nextBtn = document.getElementById('next-btn'), downloadBtn = document.getElementById('download-btn'), downloadSpinner = document.getElementById('download-spinner'), restartBtn = document.getElementById('restart-btn'), canvas = document.getElementById('waveform-canvas'), canvasCtx = canvas.getContext('2d'), resumeModal = document.getElementById('resume-modal'), resumeText = document.getElementById('resume-text'), resumeNewBtn = document.getElementById('resume-new-btn'), resumeContinueBtn = document.getElementById('resume-continue-btn');
+
+            // --- Scripts Data ---
+            const scripts = { "basic_set": { name: "基本セット (10文)", lines: ["おはようございます。", "こんにちは。", "こんばんは。", "ありがとうございます。", "どういたしまして。", "すみません。", "ごめんなさい。", "お疲れ様です。", "失礼します。", "よろしくお願いします。"] }, "emotion_set": { name: "感情表現セット (8文)", lines: ["とても嬉しいです。", "本当に悲しいです。", "びっくりしました。", "すごく怒っています。", "楽しかったです。", "不安でいっぱいです。", "それは面白いですね。", "つまらないです。"] } };
+
+            // --- State Management ---
+            let appState = 'idle', mediaRecorder, audioChunks = [], currentScriptKey, currentScript, currentIndex = 0, currentBlob = null, stream, audioContext, analyser, source, animationFrameId, db;
+
+            // --- IndexedDB Management ---
+            const dbName = 'KoerecDB', storeName = 'recordings';
+            function initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(dbName, 1);
+                    request.onerror = e => reject("DB Error: " + e.target.errorCode);
+                    request.onsuccess = e => { db = e.target.result; resolve(db); };
+                    request.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName, { keyPath: 'id' });
+                        }
+                    };
+                });
+            }
+
+            function dbAction(type, data = null) {
+                return new Promise((resolve, reject) => {
+                    if (!db) reject("DB not initialized");
+                    const transaction = db.transaction([storeName], type === 'get' || type === 'getAll' ? 'readonly' : 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = data ? store[type](data) : store[type]();
+                    request.onerror = e => reject("Transaction Error: " + e.target.errorCode);
+                    request.onsuccess = e => resolve(e.target.result);
+                });
+            }
+
+            // --- Initialization ---
+            Object.keys(scripts).forEach(key => { const option = document.createElement('option'); option.value = key; option.textContent = scripts[key].name; scriptSelect.appendChild(option); });
+            initDB();
             
-            const scriptSelect = document.getElementById('script-select');
-            const startBtn = document.getElementById('start-btn');
-            
-            const scriptTitle = document.getElementById('script-title');
-            const progressIndicator = document.getElementById('progress-indicator');
-            const textDisplay = document.getElementById('text-display');
-            const recordBtn = document.getElementById('record-btn');
-            const statusText = document.getElementById('status-text');
-            const audioPlaybackArea = document.getElementById('audio-playback-area');
-            const audioPlayer = document.getElementById('audio-player');
-            const nextBtn = document.getElementById('next-btn');
-            const rerecordBtn = document.getElementById('rerecord-btn');
-
-            const downloadBtn = document.getElementById('download-btn');
-            const downloadSpinner = document.getElementById('download-spinner');
-            const restartBtn = document.getElementById('restart-btn');
-
-            // --- 台本データ ---
-            const scripts = {
-                "basic_set": {
-                    name: "基本セット (10文)",
-                    lines: [
-                        "おはようございます。",
-                        "こんにちは。",
-                        "こんばんは。",
-                        "ありがとうございます。",
-                        "どういたしまして。",
-                        "すみません。",
-                        "ごめんなさい。",
-                        "お疲れ様です。",
-                        "失礼します。",
-                        "よろしくお願いします。"
-                    ]
-                },
-                "emotion_set": {
-                    name: "感情表現セット (8文)",
-                    lines: [
-                        "とても嬉しいです。",
-                        "本当に悲しいです。",
-                        "びっくりしました。",
-                        "すごく怒っています。",
-                        "楽しかったです。",
-                        "不安でいっぱいです。",
-                        "それは面白いですね。",
-                        "つまらないです。"
-                    ]
-                }
-            };
-
-            // --- 状態管理 ---
-            let mediaRecorder;
-            let audioChunks = [];
-            let recordedData = []; // { filename, blob, text }
-            let currentScriptKey;
-            let currentScript;
-            let currentIndex = 0;
-            let isRecording = false;
-            let currentBlob = null;
-            let stream;
-
-            // --- 初期化処理 ---
-
-            // 台本選択肢を生成
-            Object.keys(scripts).forEach(key => {
-                const option = document.createElement('option');
-                option.value = key;
-                option.textContent = scripts[key].name;
-                scriptSelect.appendChild(option);
-            });
-            
-            // --- イベントリスナー ---
-            
-            startBtn.addEventListener('click', startRecordingSession);
-            recordBtn.addEventListener('click', toggleRecording);
-            nextBtn.addEventListener('click', goToNextLine);
-            rerecordBtn.addEventListener('click', setupForRerecording);
+            // --- Event Listeners ---
+            startBtn.addEventListener('click', checkForResume);
+            recordBtn.addEventListener('click', () => handleShortcut('Space'));
+            nextBtn.addEventListener('click', () => handleShortcut('Enter'));
+            playBtn.addEventListener('click', () => handleShortcut('KeyP'));
             downloadBtn.addEventListener('click', createAndDownloadZip);
-            restartBtn.addEventListener('click', () => location.reload());
+            restartBtn.addEventListener('click', () => { dbAction('clear').then(() => location.reload()); });
+            document.addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT' && ['Space', 'Enter', 'KeyP', 'Backspace'].includes(e.code)) { e.preventDefault(); handleShortcut(e.code); } });
+            audioPlayer.addEventListener('play', () => playBtn.innerHTML = '<i class="fas fa-pause"></i>');
+            audioPlayer.addEventListener('pause', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
+            audioPlayer.addEventListener('ended', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
+            resumeContinueBtn.addEventListener('click', () => startSession(true));
+            resumeNewBtn.addEventListener('click', () => startSession(false));
 
-            // Enterキーで次へ進む
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !nextBtn.disabled && recordingScreen.style.display !== 'none') {
-                    e.preventDefault();
-                    goToNextLine();
+            // --- Core Functions ---
+            function handleShortcut(code) {
+                switch (code) {
+                    case 'Space':
+                        if (['ready', 'reviewing'].includes(appState)) { if (appState === 'reviewing') setupForRerecording(); startRecording(); }
+                        else if (appState === 'recording') stopRecording();
+                        break;
+                    case 'Enter': if (appState === 'reviewing' && !nextBtn.disabled) goToNextLine(); break;
+                    case 'KeyP': if (appState === 'reviewing') audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause(); break;
+                    case 'Backspace': if (appState === 'ready' && currentIndex > 0) goToPreviousLine(); break;
                 }
-            });
+            }
 
-            // --- 機能 ---
+            async function checkForResume() {
+                currentScriptKey = scriptSelect.value;
+                const lastSession = await dbAction('get', `progress_${currentScriptKey}`);
+                if (lastSession && lastSession.index > 0) {
+                    resumeText.textContent = `「${scripts[currentScriptKey].name}」に未完了の進捗（${lastSession.index} / ${scripts[currentScriptKey].lines.length}）があります。続きから再開しますか？`;
+                    resumeModal.classList.remove('hidden');
+                    setTimeout(() => resumeModal.classList.remove('opacity-0'), 10);
+                } else {
+                    startSession(false);
+                }
+            }
+            
+            async function startSession(resume) {
+                resumeModal.classList.add('opacity-0');
+                setTimeout(() => resumeModal.classList.add('hidden'), 300);
 
-            async function startRecordingSession() {
                 try {
-                    // マイクへのアクセス許可
                     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     
-                    currentScriptKey = scriptSelect.value;
+                    if (!resume) {
+                        currentIndex = 0;
+                        await dbAction('clear');
+                    } else {
+                        const progress = await dbAction('get', `progress_${currentScriptKey}`);
+                        currentIndex = progress ? progress.index : 0;
+                    }
+                    
                     currentScript = scripts[currentScriptKey];
-                    
                     initialScreen.style.display = 'none';
                     recordingScreen.style.display = 'block';
-                    
                     scriptTitle.textContent = currentScript.name;
-                    currentIndex = 0;
-                    recordedData = [];
-                    isRecording = false;
-                    
                     updateDisplay();
-                    resetRecordingState();
-
-                } catch (err) {
-                    console.error("マイクへのアクセスが拒否されました:", err);
-                    alert("マイクへのアクセスが必要です。ブラウザの設定を確認して、マイクの使用を許可してください。");
-                }
+                } catch (err) { alert("マイクへのアクセスが必要です。ブラウザの設定を確認し、マイクの使用を許可してください。"); }
             }
-            
+
             function updateDisplay() {
-                if (currentIndex < currentScript.lines.length) {
-                    textDisplay.textContent = currentScript.lines[currentIndex];
-                    progressIndicator.textContent = `${currentIndex + 1} / ${currentScript.lines.length}`;
-                } else {
-                    // 全て完了
-                    recordingScreen.style.display = 'none';
-                    completionScreen.style.display = 'block';
-                    if (stream) {
-                       stream.getTracks().forEach(track => track.stop());
-                    }
-                }
+                if (currentIndex >= currentScript.lines.length) { finishSession(); return; }
+                textDisplay.textContent = currentScript.lines[currentIndex];
+                progressIndicator.textContent = `${currentIndex + 1} / ${currentScript.lines.length}`;
+                setupForRerecording();
             }
 
-            function resetRecordingState() {
-                recordBtn.disabled = false;
-                nextBtn.disabled = true;
-                rerecordBtn.style.display = 'none';
-                audioPlaybackArea.style.display = 'none';
-                statusText.textContent = "録音ボタンを押してください";
-                currentBlob = null;
-                audioChunks = [];
+            function finishSession() {
+                appState = 'finished';
+                recordingScreen.style.display = 'none';
+                completionScreen.style.display = 'block';
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                if (audioContext && audioContext.state !== 'closed') audioContext.close();
             }
             
-            function toggleRecording() {
-                if (isRecording) {
-                    stopRecording();
-                } else {
-                    startRecording();
-                }
+            function setState(newState, statusMessage) {
+                appState = newState;
+                statusText.textContent = statusMessage;
+                recordBtn.disabled = !['ready', 'recording', 'reviewing'].includes(appState);
+                nextBtn.disabled = appState !== 'reviewing';
+                playbackControls.classList.toggle('hidden', appState !== 'reviewing');
+                if (appState === 'recording') recordBtn.classList.add('recording'); else recordBtn.classList.remove('recording');
             }
-
+            
             function startRecording() {
-                if (!stream) {
-                     alert("マイクのストリームが利用できません。");
-                     return;
-                }
-                isRecording = true;
-                recordBtn.classList.add('recording');
-                statusText.textContent = "録音中...";
-                
+                setState('recording', '録音中...');
                 audioChunks = [];
                 mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.addEventListener("dataavailable", event => {
-                    audioChunks.push(event.data);
-                });
+                mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
                 mediaRecorder.addEventListener("stop", handleRecordingStop);
                 mediaRecorder.start();
+                visualizeRealtime();
             }
 
-            function stopRecording() {
-                mediaRecorder.stop();
-                isRecording = false;
-                recordBtn.classList.remove('recording');
-                statusText.textContent = "録音完了";
-            }
-            
+            function stopRecording() { if(mediaRecorder.state !== 'inactive') mediaRecorder.stop(); cancelAnimationFrame(animationFrameId); clearCanvas(); }
+
             function handleRecordingStop() {
                 currentBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                const audioUrl = URL.createObjectURL(currentBlob);
-                audioPlayer.src = audioUrl;
-                
-                audioPlaybackArea.style.display = 'block';
-                recordBtn.disabled = true;
-                nextBtn.disabled = false;
-                rerecordBtn.style.display = 'block';
-                statusText.textContent = "音声を確認してください";
-                nextBtn.focus(); // Enterキーが効くようにフォーカス
+                audioPlayer.src = URL.createObjectURL(currentBlob);
+                setState('reviewing', '音声を確認してください');
+                visualizeStatic(currentBlob);
             }
             
-            function goToNextLine() {
+            async function goToNextLine() {
                 if (!currentBlob) return;
-                
-                const filename = `${String(currentIndex + 1).padStart(3, '0')}.wav`;
-                recordedData.push({
-                    filename: filename,
-                    blob: currentBlob,
-                    text: currentScript.lines[currentIndex]
-                });
-                
+                const id = `${currentScriptKey}_${String(currentIndex).padStart(4, '0')}`;
+                const data = { id, scriptKey: currentScriptKey, index: currentIndex, blob: currentBlob, text: currentScript.lines[currentIndex] };
+                await dbAction('put', data);
                 currentIndex++;
+                await dbAction('put', { id: `progress_${currentScriptKey}`, scriptKey: currentScriptKey, index: currentIndex });
                 updateDisplay();
-                if(currentIndex < currentScript.lines.length) {
-                    resetRecordingState();
-                }
             }
-            
-            function setupForRerecording() {
-                resetRecordingState();
-                statusText.textContent = "再度録音してください";
+
+            async function goToPreviousLine() {
+                if (currentIndex <= 0) return;
+                currentIndex--;
+                const id = `${currentScriptKey}_${String(currentIndex).padStart(4, '0')}`;
+                await dbAction('delete', id);
+                await dbAction('put', { id: `progress_${currentScriptKey}`, scriptKey: currentScriptKey, index: currentIndex });
+                updateDisplay();
+            }
+
+            function setupForRerecording() { currentBlob = null; clearCanvas(); setState('ready', '録音してください'); }
+
+            function clearCanvas() { canvas.width = canvas.offsetWidth * window.devicePixelRatio; canvas.height = canvas.offsetHeight * window.devicePixelRatio; canvasCtx.fillStyle = '#111827'; canvasCtx.fillRect(0, 0, canvas.width, canvas.height); }
+
+            function visualizeRealtime() {
+                clearCanvas();
+                if (!source) { analyser = audioContext.createAnalyser(); source = audioContext.createMediaStreamSource(stream); source.connect(analyser); }
+                analyser.fftSize = 2048; const bufferLength = analyser.frequencyBinCount; const dataArray = new Uint8Array(bufferLength);
+                const draw = () => {
+                    animationFrameId = requestAnimationFrame(draw); analyser.getByteTimeDomainData(dataArray); clearCanvas();
+                    canvasCtx.lineWidth = 2; canvasCtx.strokeStyle = '#34d399'; canvasCtx.beginPath();
+                    const sliceWidth = canvas.width / bufferLength; let x = 0;
+                    for (let i = 0; i < bufferLength; i++) { const v = dataArray[i] / 128.0, y = v * canvas.height / 2; if (i === 0) canvasCtx.moveTo(x, y); else canvasCtx.lineTo(x, y); x += sliceWidth; }
+                    canvasCtx.lineTo(canvas.width, canvas.height / 2); canvasCtx.stroke();
+                };
+                draw();
+            }
+
+            async function visualizeStatic(blob) {
+                clearCanvas(); const arrayBuffer = await blob.arrayBuffer(); const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const data = audioBuffer.getChannelData(0); canvasCtx.lineWidth = 1; canvasCtx.strokeStyle = '#60a5fa'; canvasCtx.beginPath();
+                const sliceWidth = canvas.width / data.length; let x = 0;
+                for (let i = 0; i < data.length; i++) { const y = (data[i] * 0.5 + 0.5) * canvas.height; if (i === 0) canvasCtx.moveTo(x, y); else canvasCtx.lineTo(x, y); x += sliceWidth; }
+                canvasCtx.stroke();
             }
 
             async function createAndDownloadZip() {
-                downloadBtn.disabled = true;
-                downloadSpinner.style.display = 'block';
-
+                downloadBtn.disabled = true; downloadSpinner.style.display = 'block';
                 try {
-                    const zip = new JSZip();
-                    const folderName = currentScriptKey;
-                    const folder = zip.folder(folderName);
-                    
-                    let transcript = '';
-                    
-                    recordedData.forEach(data => {
-                        folder.file(data.filename, data.blob);
-                        transcript += `${data.filename}|${data.text}\n`;
+                    const allData = await dbAction('getAll');
+                    const recordings = allData.filter(d => d.scriptKey === currentScriptKey && d.blob);
+                    const zip = new JSZip(); const folder = zip.folder(currentScriptKey); let transcript = '';
+                    recordings.sort((a,b) => a.index - b.index).forEach(data => {
+                        const filename = `${String(data.index + 1).padStart(3, '0')}.wav`;
+                        folder.file(filename, data.blob); transcript += `${filename}|${data.text}\n`;
                     });
-
                     folder.file('transcript.txt', transcript);
-
                     const content = await zip.generateAsync({ type: 'blob' });
-                    
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(content);
-                    link.download = `${folderName}.zip`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                } catch(e) {
-                    console.error("ZIPファイルの生成に失敗しました:", e);
-                    alert("ZIPファイルの生成に失敗しました。");
-                } finally {
-                    downloadBtn.disabled = false;
-                    downloadSpinner.style.display = 'none';
-                }
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(content); link.download = `${currentScriptKey}.zip`;
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                } catch(e) { console.error("ZIP generation failed:", e); alert("ZIPファイルの生成に失敗しました。"); }
+                finally { downloadBtn.disabled = false; downloadSpinner.style.display = 'none'; }
             }
         });
     </script>

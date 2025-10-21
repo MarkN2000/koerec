@@ -738,18 +738,18 @@
 
             async function createZipFile(recordings) {
                 const zip = new JSZip(); 
-                const folder = zip.folder(currentScriptKey); 
+                const audioFolder = zip.folder('audio');
                 let transcript = '';
                 
                 recordings.sort((a,b) => a.index - b.index).forEach(data => {
                     const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
-                    folder.file(filename, data.blob); 
+                    audioFolder.file(filename, data.blob); 
                     
                     // 標準形式でTXTファイルの内容を生成
                     transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
                 });
                 
-                folder.file('transcript.txt', transcript);
+                zip.file('esd.list', transcript);
                 const content = await zip.generateAsync({ type: 'blob' });
                 const link = document.createElement('a'); 
                 link.href = URL.createObjectURL(content); 

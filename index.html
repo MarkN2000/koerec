@@ -85,9 +85,9 @@
             <div class="mb-8">
                 <h2 class="text-xl font-semibold mb-4">エクスポート形式</h2>
                 <select id="export-format-select" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="txt">TXT形式（音声ファイル名|話者名|言語|文章内容）</option>
-                    <option value="zip">ZIP形式（音声ファイル + 対応表）</option>
+                    <option value="standard">標準形式（音声ファイル名|話者名|言語|文章内容）</option>
                 </select>
+                <p class="text-sm text-gray-500 mt-2">※ 出力は必ずZIPファイル形式で、音声ファイルとTXTファイルが含まれます</p>
             </div>
             
             <!-- 設定 -->
@@ -228,7 +228,7 @@
             let animationFrameId;
             let db;
             let selectedScripts = [];
-            let exportFormat = 'txt';
+            let exportFormat = 'standard';
 
             // --- IndexedDB Management ---
             const dbName = 'KoerecDB';
@@ -615,11 +615,8 @@
                     const allData = await dbAction('getAll');
                     const recordings = allData.filter(d => d.scriptKey === currentScriptKey && d.blob);
                     
-                    if (exportFormat === 'zip') {
-                        await createZipFile(recordings);
-                    } else {
-                        await createTxtFile(recordings);
-                    }
+                    // 必ずZIPファイルを生成
+                    await createZipFile(recordings);
                 } catch(e) { 
                     console.error("ファイル生成に失敗:", e); 
                     alert("ファイルの生成に失敗しました。"); 
@@ -638,6 +635,8 @@
                 recordings.sort((a,b) => a.index - b.index).forEach(data => {
                     const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
                     folder.file(filename, data.blob); 
+                    
+                    // 標準形式でTXTファイルの内容を生成
                     transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
                 });
                 
@@ -651,21 +650,6 @@
                 document.body.removeChild(link);
             }
 
-            async function createTxtFile(recordings) {
-                let transcript = '';
-                recordings.sort((a,b) => a.index - b.index).forEach(data => {
-                    const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
-                    transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
-                });
-                
-                const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
-                const link = document.createElement('a'); 
-                link.href = URL.createObjectURL(blob); 
-                link.download = `${currentScriptKey}.txt`;
-                document.body.appendChild(link); 
-                link.click(); 
-                document.body.removeChild(link);
-            }
 
             // アプリケーション初期化
             initializeApp();

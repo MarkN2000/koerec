@@ -107,7 +107,9 @@
         <!-- 録音画面 -->
         <div id="recording-screen" class="hidden">
             <div class="flex justify-between items-center mb-4">
-                <h2 id="script-title" class="text-xl font-bold"></h2>
+                <button id="back-btn" class="w-10 h-10 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <span id="progress-indicator" class="text-sm font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full"></span>
             </div>
             <div id="text-display" class="bg-gray-50 p-6 rounded-lg text-center text-4xl font-semibold my-5 border border-gray-200 min-h-[150px] flex items-center justify-center"></div>
@@ -184,7 +186,7 @@
             const speakerName = document.getElementById('speaker-name');
             const language = document.getElementById('language');
             const startBtn = document.getElementById('start-btn');
-            const scriptTitle = document.getElementById('script-title');
+            const backBtn = document.getElementById('back-btn');
             const progressIndicator = document.getElementById('progress-indicator');
             const textDisplay = document.getElementById('text-display');
             const recordBtn = document.getElementById('record-btn');
@@ -462,6 +464,7 @@
 
             // --- Event Listeners ---
             startBtn.addEventListener('click', checkForResume);
+            backBtn.addEventListener('click', () => handleShortcut('Backspace'));
             recordBtn.addEventListener('click', () => handleShortcut('Space'));
             nextBtn.addEventListener('click', () => handleShortcut('Enter'));
             playBtn.addEventListener('click', () => handleShortcut('KeyP'));
@@ -549,7 +552,6 @@
                     
                     initialScreen.style.display = 'none';
                     recordingScreen.style.display = 'block';
-                    scriptTitle.textContent = currentScript.name;
                     updateDisplay();
                 } catch (err) { 
                     alert("マイクへのアクセスが必要です。ブラウザの設定を確認し、マイクの使用を許可してください。"); 
@@ -579,6 +581,7 @@
                 statusText.textContent = statusMessage;
                 recordBtn.disabled = !['ready', 'recording', 'reviewing'].includes(appState);
                 nextBtn.disabled = appState !== 'reviewing';
+                backBtn.disabled = !(appState === 'ready' && currentIndex > 0);
                 
                 // 再生ボタンの状態管理
                 if (appState === 'reviewing') {

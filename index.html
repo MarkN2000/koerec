@@ -202,8 +202,36 @@
 
             // --- 事前定義台本データ ---
             const predefinedScripts = {
-                "basic_set": { name: "基本セット", file: "scripts/basic_set.txt", isPredefined: true },
-                "emotion_set": { name: "感情表現セット", file: "scripts/emotion_set.txt", isPredefined: true }
+                "basic_set": { 
+                    name: "basic_set", 
+                    lines: [
+                        "おはようございます。",
+                        "こんにちは。",
+                        "こんばんは。",
+                        "ありがとうございます。",
+                        "どういたしまして。",
+                        "すみません。",
+                        "ごめんなさい。",
+                        "お疲れ様です。",
+                        "失礼します。",
+                        "よろしくお願いします。"
+                    ],
+                    isPredefined: true 
+                },
+                "emotion_set": { 
+                    name: "emotion_set", 
+                    lines: [
+                        "とても嬉しいです。",
+                        "本当に悲しいです。",
+                        "びっくりしました。",
+                        "すごく怒っています。",
+                        "楽しかったです。",
+                        "不安でいっぱいです。",
+                        "それは面白いですね。",
+                        "つまらないです。"
+                    ],
+                    isPredefined: true 
+                }
             };
 
             // --- カスタム台本管理 ---
@@ -415,28 +443,14 @@
             }
 
             // --- 台本統合機能 ---
-            async function loadSelectedScripts() {
+            function loadSelectedScripts() {
                 const scripts = [];
                 
                 // 選択された台本を読み込み
                 for (const key of selectedScripts) {
                     if (allScripts[key]) {
                         const script = allScripts[key];
-                        
-                        if (script.isPredefined) {
-                            // 事前定義台本の場合
-                            try {
-                                const response = await fetch(script.file);
-                                const text = await response.text();
-                                const lines = text.split('\n').filter(line => line.trim() !== '');
-                                scripts.push(...lines);
-                            } catch (error) {
-                                console.error(`台本の読み込みに失敗: ${key}`, error);
-                            }
-                        } else {
-                            // カスタム台本の場合
-                            scripts.push(...script.lines);
-                        }
+                        scripts.push(...script.lines);
                     }
                 }
 
@@ -527,7 +541,7 @@
                     }
                     
                     // 台本を統合
-                    const scriptLines = await loadSelectedScripts();
+                    const scriptLines = loadSelectedScripts();
                     currentScript = { name: "統合台本", lines: scriptLines };
                     
                     initialScreen.style.display = 'none';

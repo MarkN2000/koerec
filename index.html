@@ -73,7 +73,8 @@
                         <div class="flex space-x-2">
                             <input type="file" id="custom-script-upload" accept=".txt" class="hidden">
                             <button id="import-script-btn" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">ファイルからインポート</button>
-                            <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">台本を保存</button>
+                            <button id="clear-script-btn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm">クリア</button>
+                            <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">リストに追加</button>
                         </div>
                     </div>
                 </div>
@@ -179,6 +180,7 @@
             const scriptList = document.getElementById('script-list');
             const customScriptUpload = document.getElementById('custom-script-upload');
             const importScriptBtn = document.getElementById('import-script-btn');
+            const clearScriptBtn = document.getElementById('clear-script-btn');
             const scriptEditor = document.getElementById('script-editor');
             const scriptLineCount = document.getElementById('script-line-count');
             const saveScriptBtn = document.getElementById('save-script-btn');
@@ -307,6 +309,9 @@
                 // インポートボタン
                 importScriptBtn.addEventListener('click', () => customScriptUpload.click());
 
+                // クリアボタン
+                clearScriptBtn.addEventListener('click', clearScriptEditor);
+
                 // カスタム台本アップロード
                 customScriptUpload.addEventListener('change', handleCustomScriptUpload);
 
@@ -322,6 +327,11 @@
             function updateLineCount() {
                 const lines = scriptEditor.value.split('\n').filter(line => line.trim() !== '');
                 scriptLineCount.textContent = `${lines.length}行`;
+            }
+
+            function clearScriptEditor() {
+                scriptEditor.value = '';
+                updateLineCount();
             }
 
             // --- 台本リスト管理 ---
@@ -401,6 +411,10 @@
                 allScripts = { ...predefinedScripts, ...customScripts };
                 updateScriptList();
                 
+                // エディタをリセット
+                scriptEditor.value = '';
+                updateLineCount();
+                
                 alert('台本を保存しました。');
             }
 
@@ -416,26 +430,20 @@
                     return;
                 }
 
-                // カスタム台本として保存
-                const key = `custom_${Date.now()}`;
-                const name = prompt('台本名を入力してください:', file.name.replace('.txt', ''));
-                if (!name) return;
+                // コロン（:）以前を削除して右側の文章のみを抽出
+                const processedLines = lines.map(line => {
+                    const colonIndex = line.indexOf(':');
+                    if (colonIndex !== -1) {
+                        return line.substring(colonIndex + 1).trim();
+                    }
+                    return line.trim();
+                }).filter(line => line !== '');
 
-                customScripts[key] = {
-                    name: name,
-                    lines: lines,
-                    isPredefined: false
-                };
-                
-                saveCustomScripts();
-                allScripts = { ...predefinedScripts, ...customScripts };
-                updateScriptList();
-                
-                // エディタに内容を表示
-                scriptEditor.value = text;
+                // エディタに処理済み内容を表示
+                scriptEditor.value = processedLines.join('\n');
                 updateLineCount();
                 
-                alert('台本をインポートしました。');
+                alert('台本をエディタに読み込みました。保存ボタンを押して台本を保存してください。');
             }
 
             function deleteCustomScript(key) {

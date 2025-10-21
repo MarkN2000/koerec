@@ -1,0 +1,21 @@
+{
+  "formats": [
+    {
+      "id": "txt",
+      "name": "TXT形式",
+      "description": "音声ファイル名|話者名|言語|文章内容の形式",
+      "extension": ".txt"
+    },
+    {
+      "id": "zip",
+      "name": "ZIP形式",
+      "description": "音声ファイル + 対応表を含むZIPファイル",
+      "extension": ".zip"
+    }
+  ],
+  "defaultFormat": "txt",
+  "metadata": {
+    "speaker": "test_speaker",
+    "language": "JP"
+  }
+}

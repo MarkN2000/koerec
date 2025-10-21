@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koerec - 高速音声コーパス作成ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Inter', 'Noto Sans JP', sans-serif; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale; 
+        }
+        .record-btn.recording .fa-microphone { display: none; }
+        .record-btn:not(.recording) .fa-stop { display: none; }
+        .record-btn.recording { 
+            animation: pulse 1.5s infinite; 
+        }
+        @keyframes pulse { 
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 
+            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
+        }
+        .shortcut-key { 
+            background-color: #f3f4f6; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.25rem; 
+            padding: 0.1rem 0.4rem; 
+            font-family: monospace; 
+            font-size: 0.8em; 
+            color: #374151; 
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1); 
+        }
+        .modal-overlay { 
+            transition: opacity 0.3s ease; 
+        }
+        .script-editor {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
+
+    <div id="app-container" class="w-full max-w-4xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-xl">
+        
+        <!-- 初期画面 -->
+        <div id="initial-screen">
+            <h1 class="text-4xl font-bold text-center mb-2">Koerec</h1>
+            <p class="text-gray-600 text-center mb-8">高速音声コーパス作成ツール</p>
+            
+            <!-- 台本選択セクション -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">台本選択</h2>
+                
+                <!-- 事前定義台本選択 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">事前定義台本セット</label>
+                    <div id="script-checkboxes" class="space-y-2">
+                        <!-- 動的に生成される -->
+                    </div>
+                </div>
+                
+                <!-- カスタム台本アップロード -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">カスタム台本のアップロード</label>
+                    <input type="file" id="custom-script-upload" accept=".txt" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <!-- 台本編集エリア -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">台本の編集</label>
+                    <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。"></textarea>
+                    <div class="flex justify-between items-center mt-2">
+                        <span id="script-line-count" class="text-sm text-gray-500">0行</span>
+                        <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">台本を保存</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- エクスポート形式選択 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">エクスポート形式</h2>
+                <select id="export-format-select" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="txt">TXT形式（音声ファイル名|話者名|言語|文章内容）</option>
+                    <option value="zip">ZIP形式（音声ファイル + 対応表）</option>
+                </select>
+            </div>
+            
+            <!-- 設定 -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">設定</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">話者名</label>
+                        <input type="text" id="speaker-name" value="test_speaker" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">言語</label>
+                        <input type="text" id="language" value="JP" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center">
+                <button id="start-btn" class="w-full max-w-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    録音開始
+                </button>
+            </div>
+        </div>
+
+        <!-- 録音画面 -->
+        <div id="recording-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="script-title" class="text-xl font-bold"></h2>
+                <span id="progress-indicator" class="text-sm font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full"></span>
+            </div>
+            <div id="text-display" class="bg-gray-50 p-6 rounded-lg text-center text-4xl font-semibold my-5 border border-gray-200 min-h-[150px] flex items-center justify-center"></div>
+            <div class="w-full h-24 bg-gray-900 rounded-lg mb-5 overflow-hidden">
+                <canvas id="waveform-canvas" class="w-full h-full"></canvas>
+            </div>
+            <div class="flex items-center justify-center space-x-6 mb-6">
+                <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                    <i class="fas fa-microphone"></i>
+                    <i class="fas fa-stop"></i>
+                </button>
+                <div class="text-center">
+                    <p id="status-text" class="text-lg text-gray-700 font-medium w-48"></p>
+                    <div id="playback-controls" class="hidden items-center justify-center mt-2">
+                        <audio id="audio-player" class="hidden"></audio>
+                        <button id="play-btn" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-blue-500 transition">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+                <button id="next-btn" class="w-20 h-20 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            <div id="shortcut-guide" class="text-center text-gray-500 p-4 border-t border-gray-200 grid grid-cols-3 gap-2">
+                <div><span class="shortcut-key">Space</span> 録音/停止/再録音</div>
+                <div><span class="shortcut-key">Enter</span> 次へ</div>
+                <div><span class="shortcut-key">P</span> 再生</div>
+                <div class="col-start-3"><span class="shortcut-key">Backspace</span> 戻る</div>
+            </div>
+        </div>
+
+        <!-- 完了画面 -->
+        <div id="completion-screen" class="hidden text-center">
+            <h1 class="text-3xl font-bold mb-4">録音完了！</h1>
+            <p class="text-gray-600 mb-8">すべての文章の録音が完了しました。データ一式をダウンロードしてください。</p>
+            <div id="download-spinner" class="hidden my-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p class="mt-2 text-sm text-gray-500">ファイルを生成中です...</p>
+            </div>
+            <button id="download-btn" class="w-full max-w-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">ダウンロード</button>
+            <button id="restart-btn" class="mt-4 w-full max-w-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">最初からやり直す</button>
+        </div>
+    </div>
+    
+    <!-- 再開確認モーダル -->
+    <div id="resume-modal" class="modal-overlay fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 class="text-lg font-bold mb-4">進捗の再開</h3>
+            <p id="resume-text" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="resume-new-btn" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">初めから</button>
+                <button id="resume-continue-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">続きから再開</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const initialScreen = document.getElementById('initial-screen');
+            const recordingScreen = document.getElementById('recording-screen');
+            const completionScreen = document.getElementById('completion-screen');
+            const scriptCheckboxes = document.getElementById('script-checkboxes');
+            const customScriptUpload = document.getElementById('custom-script-upload');
+            const scriptEditor = document.getElementById('script-editor');
+            const scriptLineCount = document.getElementById('script-line-count');
+            const saveScriptBtn = document.getElementById('save-script-btn');
+            const exportFormatSelect = document.getElementById('export-format-select');
+            const speakerName = document.getElementById('speaker-name');
+            const language = document.getElementById('language');
+            const startBtn = document.getElementById('start-btn');
+            const scriptTitle = document.getElementById('script-title');
+            const progressIndicator = document.getElementById('progress-indicator');
+            const textDisplay = document.getElementById('text-display');
+            const recordBtn = document.getElementById('record-btn');
+            const statusText = document.getElementById('status-text');
+            const playbackControls = document.getElementById('playback-controls');
+            const audioPlayer = document.getElementById('audio-player');
+            const playBtn = document.getElementById('play-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const downloadSpinner = document.getElementById('download-spinner');
+            const restartBtn = document.getElementById('restart-btn');
+            const canvas = document.getElementById('waveform-canvas');
+            const canvasCtx = canvas.getContext('2d');
+            const resumeModal = document.getElementById('resume-modal');
+            const resumeText = document.getElementById('resume-text');
+            const resumeNewBtn = document.getElementById('resume-new-btn');
+            const resumeContinueBtn = document.getElementById('resume-continue-btn');
+
+            // --- 事前定義台本データ ---
+            const predefinedScripts = {
+                "basic_set": { name: "基本セット (10文)", file: "scripts/basic_set.txt" },
+                "emotion_set": { name: "感情表現セット (8文)", file: "scripts/emotion_set.txt" }
+            };
+
+            // --- State Management ---
+            let appState = 'idle';
+            let mediaRecorder;
+            let audioChunks = [];
+            let currentScriptKey;
+            let currentScript;
+            let currentIndex = 0;
+            let currentBlob = null;
+            let stream;
+            let audioContext;
+            let analyser;
+            let source;
+            let animationFrameId;
+            let db;
+            let selectedScripts = [];
+            let exportFormat = 'txt';
+
+            // --- IndexedDB Management ---
+            const dbName = 'KoerecDB';
+            const storeName = 'recordings';
+            
+            function initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(dbName, 1);
+                    request.onerror = e => reject("DB Error: " + e.target.errorCode);
+                    request.onsuccess = e => { 
+                        db = e.target.result; 
+                        resolve(db); 
+                    };
+                    request.onupgradeneeded = e => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName, { keyPath: 'id' });
+                        }
+                    };
+                });
+            }
+
+            function dbAction(type, data = null) {
+                return new Promise((resolve, reject) => {
+                    if (!db) reject("DB not initialized");
+                    const transaction = db.transaction([storeName], type === 'get' || type === 'getAll' ? 'readonly' : 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = data ? store[type](data) : store[type]();
+                    request.onerror = e => reject("Transaction Error: " + e.target.errorCode);
+                    request.onsuccess = e => resolve(e.target.result);
+                });
+            }
+
+            // --- 初期化 ---
+            function initializeApp() {
+                // 事前定義台本のチェックボックスを生成
+                Object.keys(predefinedScripts).forEach(key => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    div.innerHTML = `
+                        <input type="checkbox" id="script-${key}" value="${key}" class="mr-2">
+                        <label for="script-${key}" class="text-sm">${predefinedScripts[key].name}</label>
+                    `;
+                    scriptCheckboxes.appendChild(div);
+                });
+
+                // 台本エディタの行数カウント
+                scriptEditor.addEventListener('input', updateLineCount);
+                updateLineCount();
+
+                // 台本保存
+                saveScriptBtn.addEventListener('click', saveScript);
+
+                // カスタム台本アップロード
+                customScriptUpload.addEventListener('change', handleCustomScriptUpload);
+
+                // エクスポート形式変更
+                exportFormatSelect.addEventListener('change', (e) => {
+                    exportFormat = e.target.value;
+                });
+
+                // IndexedDB初期化
+                initDB();
+            }
+
+            function updateLineCount() {
+                const lines = scriptEditor.value.split('\n').filter(line => line.trim() !== '');
+                scriptLineCount.textContent = `${lines.length}行`;
+            }
+
+            function saveScript() {
+                const content = scriptEditor.value.trim();
+                if (!content) {
+                    alert('台本を入力してください。');
+                    return;
+                }
+                
+                const lines = content.split('\n').filter(line => line.trim() !== '');
+                if (lines.length === 0) {
+                    alert('有効な台本を入力してください。');
+                    return;
+                }
+
+                // ローカルストレージに保存
+                localStorage.setItem('custom_script', content);
+                alert('台本を保存しました。');
+            }
+
+            function loadScript() {
+                const saved = localStorage.getItem('custom_script');
+                if (saved) {
+                    scriptEditor.value = saved;
+                    updateLineCount();
+                }
+            }
+
+            async function handleCustomScriptUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const text = await file.text();
+                scriptEditor.value = text;
+                updateLineCount();
+            }
+
+            // --- 台本統合機能 ---
+            async function loadSelectedScripts() {
+                const scripts = [];
+                
+                // 選択された事前定義台本を読み込み
+                for (const key of selectedScripts) {
+                    if (predefinedScripts[key]) {
+                        try {
+                            const response = await fetch(predefinedScripts[key].file);
+                            const text = await response.text();
+                            const lines = text.split('\n').filter(line => line.trim() !== '');
+                            scripts.push(...lines);
+                        } catch (error) {
+                            console.error(`台本の読み込みに失敗: ${key}`, error);
+                        }
+                    }
+                }
+
+                // カスタム台本を追加
+                const customContent = scriptEditor.value.trim();
+                if (customContent) {
+                    const customLines = customContent.split('\n').filter(line => line.trim() !== '');
+                    scripts.push(...customLines);
+                }
+
+                return scripts;
+            }
+
+            // --- Event Listeners ---
+            startBtn.addEventListener('click', checkForResume);
+            recordBtn.addEventListener('click', () => handleShortcut('Space'));
+            nextBtn.addEventListener('click', () => handleShortcut('Enter'));
+            playBtn.addEventListener('click', () => handleShortcut('KeyP'));
+            downloadBtn.addEventListener('click', createAndDownloadFiles);
+            restartBtn.addEventListener('click', () => { 
+                dbAction('clear').then(() => location.reload()); 
+            });
+            
+            document.addEventListener('keydown', e => { 
+                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && 
+                    ['Space', 'Enter', 'KeyP', 'Backspace'].includes(e.code)) { 
+                    e.preventDefault(); 
+                    handleShortcut(e.code); 
+                } 
+            });
+            
+            audioPlayer.addEventListener('play', () => playBtn.innerHTML = '<i class="fas fa-pause"></i>');
+            audioPlayer.addEventListener('pause', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
+            audioPlayer.addEventListener('ended', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
+            resumeContinueBtn.addEventListener('click', () => startSession(true));
+            resumeNewBtn.addEventListener('click', () => startSession(false));
+
+            // --- Core Functions ---
+            function handleShortcut(code) {
+                switch (code) {
+                    case 'Space':
+                        if (['ready', 'reviewing'].includes(appState)) { 
+                            if (appState === 'reviewing') setupForRerecording(); 
+                            startRecording(); 
+                        }
+                        else if (appState === 'recording') stopRecording();
+                        break;
+                    case 'Enter': 
+                        if (appState === 'reviewing' && !nextBtn.disabled) goToNextLine(); 
+                        break;
+                    case 'KeyP': 
+                        if (appState === 'reviewing') audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause(); 
+                        break;
+                    case 'Backspace': 
+                        if (appState === 'ready' && currentIndex > 0) goToPreviousLine(); 
+                        break;
+                }
+            }
+
+            async function checkForResume() {
+                // 選択された台本を取得
+                selectedScripts = Array.from(document.querySelectorAll('#script-checkboxes input:checked')).map(cb => cb.value);
+                const customContent = scriptEditor.value.trim();
+                
+                if (selectedScripts.length === 0 && !customContent) {
+                    alert('台本を選択するか、カスタム台本を入力してください。');
+                    return;
+                }
+
+                currentScriptKey = `combined_${Date.now()}`;
+                const lastSession = await dbAction('get', `progress_${currentScriptKey}`);
+                
+                if (lastSession && lastSession.index > 0) {
+                    resumeText.textContent = `未完了の進捗（${lastSession.index}文）があります。続きから再開しますか？`;
+                    resumeModal.classList.remove('hidden');
+                    setTimeout(() => resumeModal.classList.remove('opacity-0'), 10);
+                } else {
+                    startSession(false);
+                }
+            }
+            
+            async function startSession(resume) {
+                resumeModal.classList.add('opacity-0');
+                setTimeout(() => resumeModal.classList.add('hidden'), 300);
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    if (!resume) {
+                        currentIndex = 0;
+                        await dbAction('clear');
+                    } else {
+                        const progress = await dbAction('get', `progress_${currentScriptKey}`);
+                        currentIndex = progress ? progress.index : 0;
+                    }
+                    
+                    // 台本を統合
+                    const scriptLines = await loadSelectedScripts();
+                    currentScript = { name: "統合台本", lines: scriptLines };
+                    
+                    initialScreen.style.display = 'none';
+                    recordingScreen.style.display = 'block';
+                    scriptTitle.textContent = currentScript.name;
+                    updateDisplay();
+                } catch (err) { 
+                    alert("マイクへのアクセスが必要です。ブラウザの設定を確認し、マイクの使用を許可してください。"); 
+                }
+            }
+
+            function updateDisplay() {
+                if (currentIndex >= currentScript.lines.length) { 
+                    finishSession(); 
+                    return; 
+                }
+                textDisplay.textContent = currentScript.lines[currentIndex];
+                progressIndicator.textContent = `${currentIndex + 1} / ${currentScript.lines.length}`;
+                setupForRerecording();
+            }
+
+            function finishSession() {
+                appState = 'finished';
+                recordingScreen.style.display = 'none';
+                completionScreen.style.display = 'block';
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                if (audioContext && audioContext.state !== 'closed') audioContext.close();
+            }
+            
+            function setState(newState, statusMessage) {
+                appState = newState;
+                statusText.textContent = statusMessage;
+                recordBtn.disabled = !['ready', 'recording', 'reviewing'].includes(appState);
+                nextBtn.disabled = appState !== 'reviewing';
+                playbackControls.classList.toggle('hidden', appState !== 'reviewing');
+                if (appState === 'recording') recordBtn.classList.add('recording'); 
+                else recordBtn.classList.remove('recording');
+            }
+            
+            function startRecording() {
+                setState('recording', '録音中...');
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
+                mediaRecorder.addEventListener("stop", handleRecordingStop);
+                mediaRecorder.start();
+                visualizeRealtime();
+            }
+
+            function stopRecording() { 
+                if(mediaRecorder.state !== 'inactive') mediaRecorder.stop(); 
+                cancelAnimationFrame(animationFrameId); 
+                clearCanvas(); 
+            }
+
+            function handleRecordingStop() {
+                currentBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                audioPlayer.src = URL.createObjectURL(currentBlob);
+                setState('reviewing', '音声を確認してください');
+                visualizeStatic(currentBlob);
+            }
+            
+            async function goToNextLine() {
+                if (!currentBlob) return;
+                const id = `${currentScriptKey}_${String(currentIndex).padStart(4, '0')}`;
+                const data = { 
+                    id, 
+                    scriptKey: currentScriptKey, 
+                    index: currentIndex, 
+                    blob: currentBlob, 
+                    text: currentScript.lines[currentIndex] 
+                };
+                await dbAction('put', data);
+                currentIndex++;
+                await dbAction('put', { 
+                    id: `progress_${currentScriptKey}`, 
+                    scriptKey: currentScriptKey, 
+                    index: currentIndex 
+                });
+                updateDisplay();
+            }
+
+            async function goToPreviousLine() {
+                if (currentIndex <= 0) return;
+                currentIndex--;
+                const id = `${currentScriptKey}_${String(currentIndex).padStart(4, '0')}`;
+                await dbAction('delete', id);
+                await dbAction('put', { 
+                    id: `progress_${currentScriptKey}`, 
+                    scriptKey: currentScriptKey, 
+                    index: currentIndex 
+                });
+                updateDisplay();
+            }
+
+            function setupForRerecording() { 
+                currentBlob = null; 
+                clearCanvas(); 
+                setState('ready', '録音してください'); 
+            }
+
+            function clearCanvas() { 
+                canvas.width = canvas.offsetWidth * window.devicePixelRatio; 
+                canvas.height = canvas.offsetHeight * window.devicePixelRatio; 
+                canvasCtx.fillStyle = '#111827'; 
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height); 
+            }
+
+            function visualizeRealtime() {
+                clearCanvas();
+                if (!source) { 
+                    analyser = audioContext.createAnalyser(); 
+                    source = audioContext.createMediaStreamSource(stream); 
+                    source.connect(analyser); 
+                }
+                analyser.fftSize = 2048; 
+                const bufferLength = analyser.frequencyBinCount; 
+                const dataArray = new Uint8Array(bufferLength);
+                
+                const draw = () => {
+                    animationFrameId = requestAnimationFrame(draw); 
+                    analyser.getByteTimeDomainData(dataArray); 
+                    clearCanvas();
+                    canvasCtx.lineWidth = 2; 
+                    canvasCtx.strokeStyle = '#34d399'; 
+                    canvasCtx.beginPath();
+                    const sliceWidth = canvas.width / bufferLength; 
+                    let x = 0;
+                    for (let i = 0; i < bufferLength; i++) { 
+                        const v = dataArray[i] / 128.0, y = v * canvas.height / 2; 
+                        if (i === 0) canvasCtx.moveTo(x, y); 
+                        else canvasCtx.lineTo(x, y); 
+                        x += sliceWidth; 
+                    }
+                    canvasCtx.lineTo(canvas.width, canvas.height / 2); 
+                    canvasCtx.stroke();
+                };
+                draw();
+            }
+
+            async function visualizeStatic(blob) {
+                clearCanvas(); 
+                const arrayBuffer = await blob.arrayBuffer(); 
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const data = audioBuffer.getChannelData(0); 
+                canvasCtx.lineWidth = 1; 
+                canvasCtx.strokeStyle = '#60a5fa'; 
+                canvasCtx.beginPath();
+                const sliceWidth = canvas.width / data.length; 
+                let x = 0;
+                for (let i = 0; i < data.length; i++) { 
+                    const y = (data[i] * 0.5 + 0.5) * canvas.height; 
+                    if (i === 0) canvasCtx.moveTo(x, y); 
+                    else canvasCtx.lineTo(x, y); 
+                    x += sliceWidth; 
+                }
+                canvasCtx.stroke();
+            }
+
+            async function createAndDownloadFiles() {
+                downloadBtn.disabled = true; 
+                downloadSpinner.style.display = 'block';
+                
+                try {
+                    const allData = await dbAction('getAll');
+                    const recordings = allData.filter(d => d.scriptKey === currentScriptKey && d.blob);
+                    
+                    if (exportFormat === 'zip') {
+                        await createZipFile(recordings);
+                    } else {
+                        await createTxtFile(recordings);
+                    }
+                } catch(e) { 
+                    console.error("ファイル生成に失敗:", e); 
+                    alert("ファイルの生成に失敗しました。"); 
+                }
+                finally { 
+                    downloadBtn.disabled = false; 
+                    downloadSpinner.style.display = 'none'; 
+                }
+            }
+
+            async function createZipFile(recordings) {
+                const zip = new JSZip(); 
+                const folder = zip.folder(currentScriptKey); 
+                let transcript = '';
+                
+                recordings.sort((a,b) => a.index - b.index).forEach(data => {
+                    const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
+                    folder.file(filename, data.blob); 
+                    transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
+                });
+                
+                folder.file('transcript.txt', transcript);
+                const content = await zip.generateAsync({ type: 'blob' });
+                const link = document.createElement('a'); 
+                link.href = URL.createObjectURL(content); 
+                link.download = `${currentScriptKey}.zip`;
+                document.body.appendChild(link); 
+                link.click(); 
+                document.body.removeChild(link);
+            }
+
+            async function createTxtFile(recordings) {
+                let transcript = '';
+                recordings.sort((a,b) => a.index - b.index).forEach(data => {
+                    const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
+                    transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
+                });
+                
+                const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a'); 
+                link.href = URL.createObjectURL(blob); 
+                link.download = `${currentScriptKey}.txt`;
+                document.body.appendChild(link); 
+                link.click(); 
+                document.body.removeChild(link);
+            }
+
+            // アプリケーション初期化
+            initializeApp();
+            loadScript();
+        });
+    </script>
+</body>
+</html>

@@ -114,19 +114,22 @@
             <div class="w-full h-24 bg-gray-900 rounded-lg mb-5 overflow-hidden">
                 <canvas id="waveform-canvas" class="w-full h-full"></canvas>
             </div>
-            <div class="flex items-center justify-center space-x-6 mb-6">
+            <!-- ステータスメッセージ -->
+            <div class="text-center mb-6">
+                <p id="status-text" class="text-lg text-gray-700 font-medium">録音してください</p>
+            </div>
+            
+            <!-- ボタン群 -->
+            <div class="flex items-center justify-center space-x-8 mb-6">
                 <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
                     <i class="fas fa-microphone"></i>
                     <i class="fas fa-stop"></i>
                 </button>
-                <div class="text-center">
-                    <p id="status-text" class="text-lg text-gray-700 font-medium w-48"></p>
-                    <div id="playback-controls" class="hidden items-center justify-center mt-2">
-                        <audio id="audio-player" class="hidden"></audio>
-                        <button id="play-btn" class="w-10 h-10 flex items-center justify-center text-gray-600 hover:text-blue-500 transition">
-                            <i class="fas fa-play"></i>
-                        </button>
-                    </div>
+                <div id="playback-controls">
+                    <audio id="audio-player" class="hidden"></audio>
+                    <button id="play-btn" class="w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                        <i class="fas fa-play"></i>
+                    </button>
                 </div>
                 <button id="next-btn" class="w-20 h-20 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
                     <i class="fas fa-arrow-right"></i>
@@ -576,7 +579,16 @@
                 statusText.textContent = statusMessage;
                 recordBtn.disabled = !['ready', 'recording', 'reviewing'].includes(appState);
                 nextBtn.disabled = appState !== 'reviewing';
-                playbackControls.classList.toggle('hidden', appState !== 'reviewing');
+                
+                // 再生ボタンの状態管理
+                if (appState === 'reviewing') {
+                    playBtn.disabled = false;
+                    playBtn.className = 'w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110';
+                } else {
+                    playBtn.disabled = true;
+                    playBtn.className = 'w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none';
+                }
+                
                 if (appState === 'recording') recordBtn.classList.add('recording'); 
                 else recordBtn.classList.remove('recording');
             }

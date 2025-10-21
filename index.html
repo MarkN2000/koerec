@@ -602,12 +602,25 @@
                 mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
                 mediaRecorder.addEventListener("stop", handleRecordingStop);
-                mediaRecorder.start();
-                visualizeRealtime();
+                
+                // 0.5秒後に録音開始
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                        mediaRecorder.start();
+                        visualizeRealtime();
+                    }
+                }, 500);
             }
 
             function stopRecording() { 
-                if(mediaRecorder.state !== 'inactive') mediaRecorder.stop(); 
+                if(mediaRecorder.state !== 'inactive') {
+                    // 0.5秒後に録音停止（最後の0.5秒をカット）
+                    setTimeout(() => {
+                        if(mediaRecorder.state !== 'inactive') {
+                            mediaRecorder.stop();
+                        }
+                    }, 500);
+                }
                 cancelAnimationFrame(animationFrameId); 
                 clearCanvas(); 
             }

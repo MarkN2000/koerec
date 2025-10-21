@@ -56,18 +56,12 @@
             <div class="mb-8">
                 <h2 class="text-xl font-semibold mb-4">台本選択</h2>
                 
-                <!-- 事前定義台本選択 -->
+                <!-- 台本リスト -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">事前定義台本セット</label>
-                    <div id="script-checkboxes" class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">台本リスト</label>
+                    <div id="script-list" class="border border-gray-300 rounded-lg max-h-64 overflow-y-auto bg-white shadow-sm">
                         <!-- 動的に生成される -->
                     </div>
-                </div>
-                
-                <!-- カスタム台本アップロード -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">カスタム台本のアップロード</label>
-                    <input type="file" id="custom-script-upload" accept=".txt" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 
                 <!-- 台本編集エリア -->
@@ -76,7 +70,11 @@
                     <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。"></textarea>
                     <div class="flex justify-between items-center mt-2">
                         <span id="script-line-count" class="text-sm text-gray-500">0行</span>
-                        <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">台本を保存</button>
+                        <div class="flex space-x-2">
+                            <input type="file" id="custom-script-upload" accept=".txt" class="hidden">
+                            <button id="import-script-btn" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">ファイルからインポート</button>
+                            <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">台本を保存</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -173,8 +171,9 @@
             const initialScreen = document.getElementById('initial-screen');
             const recordingScreen = document.getElementById('recording-screen');
             const completionScreen = document.getElementById('completion-screen');
-            const scriptCheckboxes = document.getElementById('script-checkboxes');
+            const scriptList = document.getElementById('script-list');
             const customScriptUpload = document.getElementById('custom-script-upload');
+            const importScriptBtn = document.getElementById('import-script-btn');
             const scriptEditor = document.getElementById('script-editor');
             const scriptLineCount = document.getElementById('script-line-count');
             const saveScriptBtn = document.getElementById('save-script-btn');
@@ -203,9 +202,13 @@
 
             // --- 事前定義台本データ ---
             const predefinedScripts = {
-                "basic_set": { name: "基本セット (10文)", file: "scripts/basic_set.txt" },
-                "emotion_set": { name: "感情表現セット (8文)", file: "scripts/emotion_set.txt" }
+                "basic_set": { name: "基本セット", file: "scripts/basic_set.txt", isPredefined: true },
+                "emotion_set": { name: "感情表現セット", file: "scripts/emotion_set.txt", isPredefined: true }
             };
+
+            // --- カスタム台本管理 ---
+            let customScripts = {};
+            let allScripts = { ...predefinedScripts };
 
             // --- State Management ---
             let appState = 'idle';
@@ -258,16 +261,8 @@
 
             // --- 初期化 ---
             function initializeApp() {
-                // 事前定義台本のチェックボックスを生成
-                Object.keys(predefinedScripts).forEach(key => {
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center';
-                    div.innerHTML = `
-                        <input type="checkbox" id="script-${key}" value="${key}" class="mr-2">
-                        <label for="script-${key}" class="text-sm">${predefinedScripts[key].name}</label>
-                    `;
-                    scriptCheckboxes.appendChild(div);
-                });
+                // 台本リストの生成
+                updateScriptList();
 
                 // 台本エディタの行数カウント
                 scriptEditor.addEventListener('input', updateLineCount);
@@ -275,6 +270,9 @@
 
                 // 台本保存
                 saveScriptBtn.addEventListener('click', saveScript);
+
+                // インポートボタン
+                importScriptBtn.addEventListener('click', () => customScriptUpload.click());
 
                 // カスタム台本アップロード
                 customScriptUpload.addEventListener('change', handleCustomScriptUpload);
@@ -293,6 +291,55 @@
                 scriptLineCount.textContent = `${lines.length}行`;
             }
 
+            // --- 台本リスト管理 ---
+            function updateScriptList() {
+                scriptList.innerHTML = '';
+                
+                // カスタム台本を読み込み
+                loadCustomScripts();
+                
+                // 全台本を表示
+                Object.keys(allScripts).forEach(key => {
+                    const script = allScripts[key];
+                    const lines = script.lines ? script.lines.length : 0;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150';
+                    item.innerHTML = `
+                        <div class="flex items-center">
+                            <input type="checkbox" id="script-${key}" value="${key}" class="w-5 h-5 mr-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                            <div class="flex-1">
+                                <label for="script-${key}" class="text-sm font-medium cursor-pointer block">${script.name}</label>
+                                <div class="text-xs text-gray-500">${lines}行</div>
+                            </div>
+                        </div>
+                        ${!script.isPredefined ? `<button class="delete-script-btn text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50" data-key="${key}">削除</button>` : ''}
+                    `;
+                    
+                    scriptList.appendChild(item);
+                });
+                
+                // 削除ボタンのイベントリスナー
+                document.querySelectorAll('.delete-script-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const key = e.target.getAttribute('data-key');
+                        deleteCustomScript(key);
+                    });
+                });
+            }
+
+            function loadCustomScripts() {
+                const saved = localStorage.getItem('custom_scripts');
+                if (saved) {
+                    customScripts = JSON.parse(saved);
+                    allScripts = { ...predefinedScripts, ...customScripts };
+                }
+            }
+
+            function saveCustomScripts() {
+                localStorage.setItem('custom_scripts', JSON.stringify(customScripts));
+            }
+
             function saveScript() {
                 const content = scriptEditor.value.trim();
                 if (!content) {
@@ -306,17 +353,22 @@
                     return;
                 }
 
-                // ローカルストレージに保存
-                localStorage.setItem('custom_script', content);
-                alert('台本を保存しました。');
-            }
+                // カスタム台本として保存
+                const key = `custom_${Date.now()}`;
+                const name = prompt('台本名を入力してください:', '新しい台本');
+                if (!name) return;
 
-            function loadScript() {
-                const saved = localStorage.getItem('custom_script');
-                if (saved) {
-                    scriptEditor.value = saved;
-                    updateLineCount();
-                }
+                customScripts[key] = {
+                    name: name,
+                    lines: lines,
+                    isPredefined: false
+                };
+                
+                saveCustomScripts();
+                allScripts = { ...predefinedScripts, ...customScripts };
+                updateScriptList();
+                
+                alert('台本を保存しました。');
             }
 
             async function handleCustomScriptUpload(event) {
@@ -324,33 +376,68 @@
                 if (!file) return;
 
                 const text = await file.text();
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                
+                if (lines.length === 0) {
+                    alert('有効な台本ファイルではありません。');
+                    return;
+                }
+
+                // カスタム台本として保存
+                const key = `custom_${Date.now()}`;
+                const name = prompt('台本名を入力してください:', file.name.replace('.txt', ''));
+                if (!name) return;
+
+                customScripts[key] = {
+                    name: name,
+                    lines: lines,
+                    isPredefined: false
+                };
+                
+                saveCustomScripts();
+                allScripts = { ...predefinedScripts, ...customScripts };
+                updateScriptList();
+                
+                // エディタに内容を表示
                 scriptEditor.value = text;
                 updateLineCount();
+                
+                alert('台本をインポートしました。');
+            }
+
+            function deleteCustomScript(key) {
+                if (confirm('この台本を削除しますか？')) {
+                    delete customScripts[key];
+                    saveCustomScripts();
+                    allScripts = { ...predefinedScripts, ...customScripts };
+                    updateScriptList();
+                }
             }
 
             // --- 台本統合機能 ---
             async function loadSelectedScripts() {
                 const scripts = [];
                 
-                // 選択された事前定義台本を読み込み
+                // 選択された台本を読み込み
                 for (const key of selectedScripts) {
-                    if (predefinedScripts[key]) {
-                        try {
-                            const response = await fetch(predefinedScripts[key].file);
-                            const text = await response.text();
-                            const lines = text.split('\n').filter(line => line.trim() !== '');
-                            scripts.push(...lines);
-                        } catch (error) {
-                            console.error(`台本の読み込みに失敗: ${key}`, error);
+                    if (allScripts[key]) {
+                        const script = allScripts[key];
+                        
+                        if (script.isPredefined) {
+                            // 事前定義台本の場合
+                            try {
+                                const response = await fetch(script.file);
+                                const text = await response.text();
+                                const lines = text.split('\n').filter(line => line.trim() !== '');
+                                scripts.push(...lines);
+                            } catch (error) {
+                                console.error(`台本の読み込みに失敗: ${key}`, error);
+                            }
+                        } else {
+                            // カスタム台本の場合
+                            scripts.push(...script.lines);
                         }
                     }
-                }
-
-                // カスタム台本を追加
-                const customContent = scriptEditor.value.trim();
-                if (customContent) {
-                    const customLines = customContent.split('\n').filter(line => line.trim() !== '');
-                    scripts.push(...customLines);
                 }
 
                 return scripts;
@@ -404,11 +491,10 @@
 
             async function checkForResume() {
                 // 選択された台本を取得
-                selectedScripts = Array.from(document.querySelectorAll('#script-checkboxes input:checked')).map(cb => cb.value);
-                const customContent = scriptEditor.value.trim();
+                selectedScripts = Array.from(document.querySelectorAll('#script-list input:checked')).map(cb => cb.value);
                 
-                if (selectedScripts.length === 0 && !customContent) {
-                    alert('台本を選択するか、カスタム台本を入力してください。');
+                if (selectedScripts.length === 0) {
+                    alert('台本を選択してください。');
                     return;
                 }
 
@@ -647,7 +733,6 @@
 
             // アプリケーション初期化
             initializeApp();
-            loadScript();
         });
     </script>
 </body>

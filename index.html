@@ -384,35 +384,31 @@
                     item.className = 'flex items-center justify-between p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 cursor-pointer';
                     item.innerHTML = `
                         <div class="flex items-center flex-1">
-                            <input type="checkbox" id="script-${key}" value="${key}" class="w-4 h-4 mr-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
-                            <label for="script-${key}" class="text-sm font-medium cursor-pointer flex-1">${script.name} (${lines}行)</label>
+                            <span class="script-checkbox text-lg mr-3" data-key="${key}">☐</span>
+                            <span class="text-sm font-medium flex-1">${script.name} (${lines}行)</span>
                         </div>
                         ${!script.isPredefined ? `<button class="delete-script-btn text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50 ml-2" data-key="${key}">削除</button>` : ''}
                     `;
                     
-                    // 項目全体をクリック可能にする
+                    // 項目全体のクリック処理
                     item.addEventListener('click', (e) => {
                         if (e.target.classList.contains('delete-script-btn')) return;
-                        const checkbox = item.querySelector('input[type="checkbox"]');
-                        checkbox.checked = !checkbox.checked;
-                        checkbox.dispatchEvent(new Event('change'));
+                        const checkbox = item.querySelector('.script-checkbox');
+                        const isChecked = checkbox.textContent === '☑';
+                        checkbox.textContent = isChecked ? '☐' : '☑';
+                        updatePreview();
                     });
                     
+                    // 削除ボタンのクリック処理
+                    const deleteBtn = item.querySelector('.delete-script-btn');
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            deleteCustomScript(key);
+                        });
+                    }
+                    
                     scriptList.appendChild(item);
-                });
-                
-                // チェックボックスの変更イベントリスナー
-                document.querySelectorAll('#script-list input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.addEventListener('change', updatePreview);
-                });
-                
-                // 削除ボタンのイベントリスナー
-                document.querySelectorAll('.delete-script-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const key = e.target.getAttribute('data-key');
-                        deleteCustomScript(key);
-                    });
                 });
             }
 
@@ -588,7 +584,9 @@
             }
 
             function getSelectedScripts() {
-                const selectedKeys = Array.from(document.querySelectorAll('#script-list input:checked')).map(cb => cb.value);
+                const selectedKeys = Array.from(document.querySelectorAll('#script-list .script-checkbox'))
+                    .filter(checkbox => checkbox.textContent === '☑')
+                    .map(checkbox => checkbox.getAttribute('data-key'));
                 return selectedKeys.map(key => allScripts[key]).filter(script => script);
             }
 
@@ -674,7 +672,9 @@
 
             async function checkForResume() {
                 // 選択された台本を取得
-                selectedScripts = Array.from(document.querySelectorAll('#script-list input:checked')).map(cb => cb.value);
+                selectedScripts = Array.from(document.querySelectorAll('#script-list .script-checkbox'))
+                    .filter(checkbox => checkbox.textContent === '☑')
+                    .map(checkbox => checkbox.getAttribute('data-key'));
                 
                 if (selectedScripts.length === 0) {
                     alert('台本を選択してください。');

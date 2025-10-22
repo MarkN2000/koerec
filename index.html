@@ -150,6 +150,14 @@
                 <p id="status-text" class="text-lg text-gray-700 font-medium">録音してください</p>
             </div>
             
+            <!-- ノーマライズ設定 -->
+            <div class="flex items-center justify-center mb-4">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" id="normalize-toggle" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                    <span class="text-sm text-gray-700">音量自動調整</span>
+                </label>
+            </div>
+            
             <!-- ボタン群 -->
             <div class="flex items-center justify-center space-x-8 mb-6">
                 <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
@@ -234,6 +242,7 @@
             const resumeText = document.getElementById('resume-text');
             const resumeNewBtn = document.getElementById('resume-new-btn');
             const resumeContinueBtn = document.getElementById('resume-continue-btn');
+            const normalizeToggle = document.getElementById('normalize-toggle');
 
             // --- 事前定義台本データ ---
             const predefinedScripts = {
@@ -289,6 +298,7 @@
             let db;
             let selectedScripts = [];
             let exportFormat = 'standard';
+            let normalizeEnabled = false;
 
             // --- IndexedDB Management ---
             const dbName = 'KoerecDB';
@@ -357,6 +367,12 @@
                 // 初期状態で録音開始ボタンを無効化
                 document.getElementById('start-btn').disabled = true;
 
+                // ノーマライズ設定の読み込み
+                loadNormalizeSetting();
+
+                // ノーマライズ設定の保存
+                normalizeToggle.addEventListener('change', saveNormalizeSetting);
+
                 // IndexedDB初期化
                 initDB();
             }
@@ -369,6 +385,116 @@
             function clearScriptEditor() {
                 scriptEditor.value = '';
                 updateLineCount();
+            }
+
+            // --- ノーマライズ設定管理 ---
+            function loadNormalizeSetting() {
+                const saved = localStorage.getItem('normalize_enabled');
+                if (saved !== null) {
+                    normalizeEnabled = saved === 'true';
+                    normalizeToggle.checked = normalizeEnabled;
+                }
+            }
+
+            function saveNormalizeSetting() {
+                normalizeEnabled = normalizeToggle.checked;
+                localStorage.setItem('normalize_enabled', normalizeEnabled.toString());
+            }
+
+            // --- ノーマライズ処理 ---
+            async function normalizeAudio(audioBlob) {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                try {
+                    // 音声データをデコード
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    
+                    // 最大音量を検出
+                    const channelData = audioBuffer.getChannelData(0);
+                    let maxPeak = 0;
+                    
+                    for (let i = 0; i < channelData.length; i++) {
+                        maxPeak = Math.max(maxPeak, Math.abs(channelData[i]));
+                    }
+                    
+                    // ノーマライズゲインを計算（最大音量を98%に調整）
+                    if (maxPeak > 0) {
+                        const targetLevel = 0.98; // 98%
+                        const normalizeGain = Math.min(targetLevel / maxPeak, 10.0); // 最大10倍まで
+                        
+                        // ゲインを適用して新しいAudioBufferを作成
+                        const normalizedBuffer = audioContext.createBuffer(
+                            audioBuffer.numberOfChannels,
+                            audioBuffer.length,
+                            audioBuffer.sampleRate
+                        );
+                        
+                        for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+                            const inputData = audioBuffer.getChannelData(channel);
+                            const outputData = normalizedBuffer.getChannelData(channel);
+                            
+                            for (let i = 0; i < inputData.length; i++) {
+                                outputData[i] = inputData[i] * normalizeGain;
+                            }
+                        }
+                        
+                        // AudioBufferをBlobに変換
+                        return await audioBufferToBlob(normalizedBuffer);
+                    }
+                    
+                    return audioBlob; // ノーマライズ不要な場合は元のBlobを返す
+                    
+                } catch (error) {
+                    console.error('ノーマライズ処理でエラーが発生しました:', error);
+                    return audioBlob; // エラーの場合は元のBlobを返す
+                }
+            }
+            
+            // AudioBufferをBlobに変換する関数
+            async function audioBufferToBlob(audioBuffer) {
+                const numberOfChannels = audioBuffer.numberOfChannels;
+                const sampleRate = audioBuffer.sampleRate;
+                const length = audioBuffer.length;
+                
+                // WAVファイルのヘッダーを作成
+                const buffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+                const view = new DataView(buffer);
+                
+                // WAVヘッダー
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+                
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, numberOfChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+                view.setUint16(32, numberOfChannels * 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, length * numberOfChannels * 2, true);
+                
+                // 音声データを書き込み
+                let offset = 44;
+                for (let i = 0; i < length; i++) {
+                    for (let channel = 0; channel < numberOfChannels; channel++) {
+                        const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+                        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                        offset += 2;
+                    }
+                }
+                
+                return new Blob([buffer], { type: 'audio/wav' });
             }
 
             // --- 台本リスト管理 ---
@@ -796,8 +922,15 @@
                 clearCanvas(); 
             }
 
-            function handleRecordingStop() {
-                currentBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            async function handleRecordingStop() {
+                let finalBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                
+                // ノーマライズが有効な場合は、録音後にノーマライズ処理を適用
+                if (normalizeEnabled) {
+                    finalBlob = await normalizeAudio(finalBlob);
+                }
+                
+                currentBlob = finalBlob;
                 audioPlayer.src = URL.createObjectURL(currentBlob);
                 setState('reviewing', '音声を確認してください');
                 visualizeStatic(currentBlob);

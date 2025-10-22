@@ -43,9 +43,9 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100 text-gray-800 min-h-screen">
 
-    <div id="app-container" class="w-full max-w-4xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-xl">
+    <div id="app-container" class="w-full max-w-4xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-xl mt-8 mb-8">
         
         <!-- 初期画面 -->
         <div id="initial-screen">
@@ -127,7 +127,7 @@
             </div>
             
             <div class="flex flex-col items-center">
-                <button id="start-btn" class="w-full max-w-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <button id="start-btn" class="w-full max-w-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
                     録音開始
                 </button>
             </div>
@@ -354,6 +354,9 @@
                 // 折りたたみ式エディタの初期化
                 initializeCollapsibleEditor();
 
+                // 初期状態で録音開始ボタンを無効化
+                document.getElementById('start-btn').disabled = true;
+
                 // IndexedDB初期化
                 initDB();
             }
@@ -538,11 +541,16 @@
                 const previewText = document.getElementById('preview-text');
                 const previewLineCount = document.getElementById('preview-line-count');
                 const showFullPreviewBtn = document.getElementById('show-full-preview-btn');
+                const startBtn = document.getElementById('start-btn');
 
+                // 録音開始ボタンの状態を更新
                 if (selectedScripts.length === 0) {
+                    startBtn.disabled = true;
                     previewDiv.classList.add('hidden');
                     isDetailedView = false;
                     return;
+                } else {
+                    startBtn.disabled = false;
                 }
 
                 previewDiv.classList.remove('hidden');

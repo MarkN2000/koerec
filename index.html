@@ -64,17 +64,45 @@
                     </div>
                 </div>
                 
-                <!-- 台本編集エリア -->
+                <!-- 選択中の台本プレビュー -->
+                <div id="script-preview" class="mb-6 hidden">
+                    <div class="border border-gray-300 rounded-lg bg-gray-50">
+                        <div id="preview-header" class="flex items-center justify-between p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100">
+                            <div class="flex items-center">
+                                <i id="preview-icon" class="fas fa-chevron-right text-gray-500 mr-2"></i>
+                                <span id="preview-title" class="font-medium text-gray-700"></span>
+                            </div>
+                            <button id="show-full-preview-btn" class="text-sm text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">詳細表示</button>
+                        </div>
+                        <div id="preview-content" class="hidden p-3">
+                            <div id="preview-text" class="text-sm text-gray-600 whitespace-pre-line"></div>
+                            <div class="mt-3 flex justify-between items-center">
+                                <span id="preview-line-count" class="text-xs text-gray-500"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 台本編集エリア（折りたたみ式） -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">台本の編集</label>
-                    <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。"></textarea>
-                    <div class="flex justify-between items-center mt-2">
-                        <span id="script-line-count" class="text-sm text-gray-500">0行</span>
-                        <div class="flex space-x-2">
-                            <input type="file" id="custom-script-upload" accept=".txt" class="hidden">
-                            <button id="import-script-btn" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">ファイルからインポート</button>
-                            <button id="clear-script-btn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm">クリア</button>
-                            <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">リストに追加</button>
+                    <div class="border border-gray-300 rounded-lg">
+                        <div id="editor-header" class="flex items-center justify-between p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50">
+                            <div class="flex items-center">
+                                <i id="editor-icon" class="fas fa-chevron-right text-gray-500 mr-2"></i>
+                                <span class="font-medium text-gray-700">台本の編集</span>
+                            </div>
+                        </div>
+                        <div id="editor-content" class="hidden p-3">
+                            <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。"></textarea>
+                            <div class="flex justify-between items-center mt-2">
+                                <span id="script-line-count" class="text-sm text-gray-500">0行</span>
+                                <div class="flex space-x-2">
+                                    <input type="file" id="custom-script-upload" accept=".txt" class="hidden">
+                                    <button id="import-script-btn" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm">ファイルからインポート</button>
+                                    <button id="clear-script-btn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm">クリア</button>
+                                    <button id="save-script-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">リストに追加</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -320,6 +348,12 @@
                     exportFormat = e.target.value;
                 });
 
+                // プレビュー機能の初期化
+                initializePreview();
+
+                // 折りたたみ式エディタの初期化
+                initializeCollapsibleEditor();
+
                 // IndexedDB初期化
                 initDB();
             }
@@ -347,24 +381,35 @@
                     const lines = script.lines ? script.lines.length : 0;
                     
                     const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150';
+                    item.className = 'flex items-center justify-between p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 cursor-pointer';
                     item.innerHTML = `
-                        <div class="flex items-center">
-                            <input type="checkbox" id="script-${key}" value="${key}" class="w-5 h-5 mr-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
-                            <div class="flex-1">
-                                <label for="script-${key}" class="text-sm font-medium cursor-pointer block">${script.name}</label>
-                                <div class="text-xs text-gray-500">${lines}行</div>
-                            </div>
+                        <div class="flex items-center flex-1">
+                            <input type="checkbox" id="script-${key}" value="${key}" class="w-4 h-4 mr-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                            <label for="script-${key}" class="text-sm font-medium cursor-pointer flex-1">${script.name} (${lines}行)</label>
                         </div>
-                        ${!script.isPredefined ? `<button class="delete-script-btn text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50" data-key="${key}">削除</button>` : ''}
+                        ${!script.isPredefined ? `<button class="delete-script-btn text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50 ml-2" data-key="${key}">削除</button>` : ''}
                     `;
                     
+                    // 項目全体をクリック可能にする
+                    item.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('delete-script-btn')) return;
+                        const checkbox = item.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change'));
+                    });
+                    
                     scriptList.appendChild(item);
+                });
+                
+                // チェックボックスの変更イベントリスナー
+                document.querySelectorAll('#script-list input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.addEventListener('change', updatePreview);
                 });
                 
                 // 削除ボタンのイベントリスナー
                 document.querySelectorAll('.delete-script-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         const key = e.target.getAttribute('data-key');
                         deleteCustomScript(key);
                     });
@@ -410,6 +455,7 @@
                 saveCustomScripts();
                 allScripts = { ...predefinedScripts, ...customScripts };
                 updateScriptList();
+                updatePreview(); // プレビューを更新
                 
                 // エディタをリセット
                 scriptEditor.value = '';
@@ -452,7 +498,116 @@
                     saveCustomScripts();
                     allScripts = { ...predefinedScripts, ...customScripts };
                     updateScriptList();
+                    updatePreview(); // プレビューを更新
                 }
+            }
+
+            // --- プレビュー機能 ---
+            function initializePreview() {
+                const previewHeader = document.getElementById('preview-header');
+                const previewContent = document.getElementById('preview-content');
+                const previewIcon = document.getElementById('preview-icon');
+                const showFullPreviewBtn = document.getElementById('show-full-preview-btn');
+
+                // プレビューの展開/折りたたみ
+                previewHeader.addEventListener('click', (e) => {
+                    // 詳細表示ボタンがクリックされた場合は展開/折りたたみしない
+                    if (e.target === showFullPreviewBtn || e.target.closest('#show-full-preview-btn')) {
+                        return;
+                    }
+                    
+                    const isHidden = previewContent.classList.contains('hidden');
+                    if (isHidden) {
+                        previewContent.classList.remove('hidden');
+                        previewIcon.className = 'fas fa-chevron-down text-gray-500 mr-2';
+                    } else {
+                        previewContent.classList.add('hidden');
+                        previewIcon.className = 'fas fa-chevron-right text-gray-500 mr-2';
+                    }
+                });
+
+                // 詳細表示ボタン
+                showFullPreviewBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // ヘッダーのクリックイベントを防ぐ
+                    toggleDetailedView();
+                });
+            }
+
+            let isDetailedView = false;
+
+            function updatePreview() {
+                const selectedScripts = getSelectedScripts();
+                const previewDiv = document.getElementById('script-preview');
+                const previewTitle = document.getElementById('preview-title');
+                const previewText = document.getElementById('preview-text');
+                const previewLineCount = document.getElementById('preview-line-count');
+                const showFullPreviewBtn = document.getElementById('show-full-preview-btn');
+
+                if (selectedScripts.length === 0) {
+                    previewDiv.classList.add('hidden');
+                    isDetailedView = false;
+                    return;
+                }
+
+                previewDiv.classList.remove('hidden');
+
+                if (selectedScripts.length === 1) {
+                    const script = selectedScripts[0];
+                    previewTitle.textContent = `${script.name} (${script.lines.length}行)`;
+                    
+                    if (isDetailedView) {
+                        previewText.textContent = script.lines.join('\n');
+                        showFullPreviewBtn.textContent = '簡易表示';
+                    } else {
+                        previewText.textContent = script.lines.slice(0, 5).join('\n') + (script.lines.length > 5 ? '\n...' : '');
+                        showFullPreviewBtn.textContent = '詳細表示';
+                    }
+                    previewLineCount.textContent = `${script.lines.length}行`;
+                } else {
+                    const totalLines = selectedScripts.reduce((sum, script) => sum + script.lines.length, 0);
+                    previewTitle.textContent = `${selectedScripts.length}個の台本が選択されています (合計${totalLines}行)`;
+                    
+                    if (isDetailedView) {
+                        previewText.textContent = selectedScripts.map(script => 
+                            `${script.name}:\n${script.lines.join('\n')}`
+                        ).join('\n\n---\n\n');
+                        showFullPreviewBtn.textContent = '簡易表示';
+                    } else {
+                        previewText.textContent = selectedScripts.map(script => 
+                            `${script.name}:\n${script.lines.slice(0, 2).join('\n')}${script.lines.length > 2 ? '\n...' : ''}`
+                        ).join('\n\n');
+                        showFullPreviewBtn.textContent = '詳細表示';
+                    }
+                    previewLineCount.textContent = `合計${totalLines}行`;
+                }
+            }
+
+            function toggleDetailedView() {
+                isDetailedView = !isDetailedView;
+                updatePreview();
+            }
+
+            function getSelectedScripts() {
+                const selectedKeys = Array.from(document.querySelectorAll('#script-list input:checked')).map(cb => cb.value);
+                return selectedKeys.map(key => allScripts[key]).filter(script => script);
+            }
+
+            // --- 折りたたみ式エディタ ---
+            function initializeCollapsibleEditor() {
+                const editorHeader = document.getElementById('editor-header');
+                const editorContent = document.getElementById('editor-content');
+                const editorIcon = document.getElementById('editor-icon');
+
+                editorHeader.addEventListener('click', () => {
+                    const isHidden = editorContent.classList.contains('hidden');
+                    if (isHidden) {
+                        editorContent.classList.remove('hidden');
+                        editorIcon.className = 'fas fa-chevron-down text-gray-500 mr-2';
+                    } else {
+                        editorContent.classList.add('hidden');
+                        editorIcon.className = 'fas fa-chevron-right text-gray-500 mr-2';
+                    }
+                });
             }
 
             // --- 台本統合機能 ---

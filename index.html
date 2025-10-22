@@ -136,9 +136,12 @@
         <!-- 録音画面 -->
         <div id="recording-screen" class="hidden">
             <div class="flex justify-between items-center mb-4">
-                <button id="back-btn" class="w-10 h-10 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
+                <div class="flex items-center space-x-3">
+                    <button id="back-btn" class="w-10 h-10 bg-gray-500 hover:bg-gray-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <span class="shortcut-key">Backspace</span>
+                </div>
                 <span id="progress-indicator" class="text-sm font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full"></span>
             </div>
             <div id="text-display" class="bg-gray-50 p-6 rounded-lg text-center text-4xl font-semibold my-5 border border-gray-200 min-h-[150px] flex items-center justify-center"></div>
@@ -160,25 +163,28 @@
             
             <!-- ボタン群 -->
             <div class="flex items-center justify-center space-x-8 mb-6">
-                <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
-                    <i class="fas fa-microphone"></i>
-                    <i class="fas fa-stop"></i>
-                </button>
-                <div id="playback-controls">
-                    <audio id="audio-player" class="hidden"></audio>
-                    <button id="play-btn" class="w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
-                        <i class="fas fa-play"></i>
+                <div class="flex flex-col items-center">
+                    <button id="record-btn" class="record-btn w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                        <i class="fas fa-microphone"></i>
+                        <i class="fas fa-stop"></i>
                     </button>
+                    <span class="shortcut-key mt-2">Space</span>
                 </div>
-                <button id="next-btn" class="w-20 h-20 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-            <div id="shortcut-guide" class="text-center text-gray-500 p-4 border-t border-gray-200 grid grid-cols-3 gap-2">
-                <div><span class="shortcut-key">Space</span> 録音/停止/再録音</div>
-                <div><span class="shortcut-key">Enter</span> 次へ</div>
-                <div><span class="shortcut-key">P</span> 再生</div>
-                <div class="col-start-3"><span class="shortcut-key">Backspace</span> 戻る</div>
+                <div class="flex flex-col items-center">
+                    <div id="playback-controls">
+                        <audio id="audio-player" class="hidden"></audio>
+                        <button id="play-btn" class="w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                    <span class="shortcut-key mt-2">P</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <button id="next-btn" class="w-20 h-20 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <span class="shortcut-key mt-2">Enter</span>
+                </div>
             </div>
         </div>
 

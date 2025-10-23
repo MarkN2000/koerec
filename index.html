@@ -197,6 +197,41 @@
                 <p class="mt-2 text-sm text-gray-500">ファイルを生成中です...</p>
             </div>
             <button id="download-btn" class="w-full max-w-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">ダウンロード</button>
+            
+            <!-- 解凍時のセキュリティ警告対策 -->
+            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left max-w-4xl mx-auto">
+                <h3 class="text-lg font-semibold text-yellow-800 mb-3">⚠️ ZIPファイル解凍時の注意</h3>
+                <p class="text-sm text-yellow-700 mb-3">
+                    ZIPファイルを解凍する際に「問題を引き起こす可能性のあるファイルが見つかりました」と表示される場合があります。
+                </p>
+                <div class="text-sm text-yellow-700">
+                    <p class="font-medium mb-2">対処方法：</p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>ダウンロードしたZIPファイルを右クリック</li>
+                        <li>「プロパティ」を選択</li>
+                        <li>「全般」タブの下部にある「セキュリティ」セクションを確認</li>
+                        <li>「許可する」にチェックを入れる</li>
+                        <li>「OK」をクリックして解凍を再試行</li>
+                    </ol>
+                </div>
+                
+                <!-- スクリーンショット表示エリア -->
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <h4 class="text-sm font-medium text-yellow-800 mb-2">プロパティをクリック</h4>
+                        <img src="assets/images/スクリーンショット 2025-10-23 150007.webp" alt="プロパティ画面のスクリーンショット" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
+                    </div>
+                    <div class="text-center">
+                        <h4 class="text-sm font-medium text-yellow-800 mb-2">許可するにチェック</h4>
+                        <img src="assets/images/スクリーンショット 2025-10-23 150033.webp" alt="セキュリティ設定のスクリーンショット" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
+                    </div>
+                </div>
+                
+                <div class="mt-3 text-xs text-yellow-600">
+                    ※ この警告はブラウザのセキュリティ機能によるもので、ファイル自体に問題はありません。
+                </div>
+            </div>
+            
             <button id="restart-btn" class="mt-4 w-full max-w-xs bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">最初からやり直す</button>
         </div>
     </div>
@@ -933,7 +968,12 @@
                 
                 // ノーマライズが有効な場合は、録音後にノーマライズ処理を適用
                 if (normalizeEnabled) {
-                    finalBlob = await normalizeAudio(finalBlob);
+                    try {
+                        finalBlob = await normalizeAudio(finalBlob);
+                    } catch (error) {
+                        console.error('ノーマライズ処理でエラーが発生しました:', error);
+                        // エラーの場合は元のBlobを使用
+                    }
                 }
                 
                 currentBlob = finalBlob;
@@ -1073,13 +1113,37 @@
                 });
                 
                 zip.file('esd.list', transcript);
-                const content = await zip.generateAsync({ type: 'blob' });
+                
+                // ZIPファイル生成の設定を改善
+                const content = await zip.generateAsync({ 
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: {
+                        level: 6
+                    }
+                });
+                
+                // 現在の日時をファイル名に含める
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const timestamp = `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
+                
                 const link = document.createElement('a'); 
                 link.href = URL.createObjectURL(content); 
-                link.download = `${currentScriptKey}.zip`;
+                link.download = `koerec_${timestamp}.zip`;
                 document.body.appendChild(link); 
                 link.click(); 
                 document.body.removeChild(link);
+                
+                // メモリリークを防ぐためURLを解放
+                setTimeout(() => {
+                    URL.revokeObjectURL(link.href);
+                }, 1000);
             }
 
 

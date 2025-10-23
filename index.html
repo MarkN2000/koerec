@@ -1176,13 +1176,26 @@
                 draw();
             }
 
+            // 波形データを保存する変数
+            let waveformData = null;
+            
             async function visualizeStatic(blob) {
                 clearCanvas(); 
                 const arrayBuffer = await blob.arrayBuffer(); 
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 const data = audioBuffer.getChannelData(0); 
                 
+                // 波形データを保存
+                waveformData = data;
+                
                 // 波形を描画
+                drawWaveform(data);
+                
+                // トリミング線を描画
+                drawTrimLines();
+            }
+            
+            function drawWaveform(data) {
                 canvasCtx.lineWidth = 1; 
                 canvasCtx.strokeStyle = '#60a5fa'; 
                 canvasCtx.beginPath();
@@ -1195,12 +1208,15 @@
                     x += sliceWidth; 
                 }
                 canvasCtx.stroke();
-                
-                // トリミング線を描画
-                drawTrimLines();
             }
             
             function drawTrimLines() {
+                if (!waveformData) return;
+                
+                // キャンバスをクリアしてから波形を再描画
+                clearCanvas();
+                drawWaveform(waveformData);
+                
                 const startX = trimStart * canvas.width;
                 const endX = trimEnd * canvas.width;
                 
@@ -1336,10 +1352,8 @@
                     trimEnd = Math.max(newRatio, trimStart + 0.01); // 開始線より後に制限
                 }
                 
-                // 波形を再描画
-                if (currentBlob) {
-                    visualizeStatic(currentBlob);
-                }
+                // トリミング線のみを再描画
+                drawTrimLines();
             }
             
             function handleTrimMouseUp(e) {

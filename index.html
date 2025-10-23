@@ -383,6 +383,46 @@
             // エクスポート形式の読み込み
             let exportFormats = {};
             
+            // テキスト解析関数
+            function parseText(text) {
+                // :以降の部分を取得
+                const colonIndex = text.indexOf(':');
+                if (colonIndex === -1) {
+                    // :がない場合は元のテキストをそのまま使用
+                    return {
+                        displayText: text,
+                        normalizedText: text
+                    };
+                }
+                
+                const afterColon = text.substring(colonIndex + 1);
+                
+                // ,で分割
+                const commaIndex = afterColon.indexOf(',');
+                if (commaIndex === -1) {
+                    // ,がない場合は表示用テキスト = 正規化テキスト
+                    return {
+                        displayText: afterColon,
+                        normalizedText: afterColon
+                    };
+                }
+                
+                // ,がある場合は分割
+                const displayText = afterColon.substring(0, commaIndex);
+                const normalizedText = afterColon.substring(commaIndex + 1);
+                
+                return {
+                    displayText: displayText,
+                    normalizedText: normalizedText
+                };
+            }
+            
+            // ルビ（括弧内の文字）を除去する関数
+            function removeRuby(text) {
+                // 括弧とその中身を除去（例: 流(なが)し → 流し）
+                return text.replace(/\([^)]*\)/g, '');
+            }
+            
             async function loadExportFormats() {
                 try {
                     const response = await fetch('config/export_formats.json');
@@ -1090,7 +1130,9 @@
                     finishSession(); 
                     return; 
                 }
-                textDisplay.textContent = currentScript.lines[currentIndex];
+                // テキストを解析して表示用テキストのみを表示
+                const parsedText = parseText(currentScript.lines[currentIndex]);
+                textDisplay.textContent = parsedText.displayText;
                 progressIndicator.textContent = `${currentIndex + 1} / ${currentScript.lines.length}`;
                 setupForRerecording();
             }
@@ -1408,17 +1450,22 @@
                     const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
                     audioFolder.file(filename, data.blob); 
                     
+                    // テキストを解析
+                    const parsedText = parseText(data.text);
+                    
                     // 選択された形式に応じてトランスクリプトを生成
                     if (selectedFormat.id === 'style_bert_vits2') {
-                        // Style-BERT-VITS2形式
-                        transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
+                        // Style-BERT-VITS2形式（表示用テキストからルビを除去）
+                        const cleanText = removeRuby(parsedText.displayText);
+                        transcript += `${filename}|${speakerName.value}|${language.value}|${cleanText}\n`;
                     } else if (selectedFormat.id === 'ljspeech') {
-                        // LJSpeech形式
+                        // LJSpeech形式（表示用テキストと正規化テキストの両方使用、ルビはそのまま）
                         const filenameId = filename.replace('.wav', ''); // 拡張子を除去
-                        transcript += `${filenameId}|${data.text}|${data.text}\n`; // 正規化されたテキストは元のテキストと同じ
+                        transcript += `${filenameId}|${parsedText.displayText}|${parsedText.normalizedText}\n`;
                     } else if (selectedFormat.id === 'simple') {
-                        // シンプル形式
-                        transcript += `${filename}|${data.text}\n`;
+                        // シンプル形式（表示用テキストからルビを除去）
+                        const cleanText = removeRuby(parsedText.displayText);
+                        transcript += `${filename}|${cleanText}\n`;
                     }
                 });
                 

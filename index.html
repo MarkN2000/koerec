@@ -500,8 +500,8 @@
                 const sampleRate = audioBuffer.sampleRate;
                 const length = audioBuffer.length;
                 
-                // WAVファイルのヘッダーを作成
-                const buffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
+                // WAVファイルのヘッダーを作成（モノラル用）
+                const buffer = new ArrayBuffer(44 + length * 1 * 2);
                 const view = new DataView(buffer);
                 
                 // WAVヘッダー
@@ -512,27 +512,37 @@
                 };
                 
                 writeString(0, 'RIFF');
-                view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+                view.setUint32(4, 36 + length * 1 * 2, true); // モノラル用に修正
                 writeString(8, 'WAVE');
                 writeString(12, 'fmt ');
                 view.setUint32(16, 16, true);
                 view.setUint16(20, 1, true);
-                view.setUint16(22, numberOfChannels, true);
+                view.setUint16(22, 1, true); // 強制的にモノラル（1チャンネル）に設定
                 view.setUint32(24, sampleRate, true);
-                view.setUint32(28, sampleRate * numberOfChannels * 2, true);
-                view.setUint16(32, numberOfChannels * 2, true);
+                view.setUint32(28, sampleRate * 1 * 2, true); // モノラル用に修正
+                view.setUint16(32, 1 * 2, true); // モノラル用に修正
                 view.setUint16(34, 16, true);
                 writeString(36, 'data');
-                view.setUint32(40, length * numberOfChannels * 2, true);
+                view.setUint32(40, length * 1 * 2, true); // モノラル用に修正
                 
-                // 音声データを書き込み
+                // 音声データを書き込み（ステレオ→モノラル変換）
                 let offset = 44;
                 for (let i = 0; i < length; i++) {
-                    for (let channel = 0; channel < numberOfChannels; channel++) {
-                        const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
-                        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-                        offset += 2;
+                    let sample;
+                    if (numberOfChannels === 1) {
+                        // 既にモノラルの場合
+                        sample = audioBuffer.getChannelData(0)[i];
+                    } else {
+                        // ステレオの場合、左右チャンネルを平均化してモノラルに変換
+                        const leftChannel = audioBuffer.getChannelData(0)[i];
+                        const rightChannel = audioBuffer.getChannelData(1)[i];
+                        sample = (leftChannel + rightChannel) / 2;
                     }
+                    
+                    // クリッピング防止
+                    sample = Math.max(-1, Math.min(1, sample));
+                    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                    offset += 2;
                 }
                 
                 return new Blob([buffer], { type: 'audio/wav' });
@@ -873,7 +883,15 @@
                 setTimeout(() => resumeModal.classList.add('hidden'), 300);
 
                 try {
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            channelCount: 1,  // モノラル録音に強制
+                            sampleRate: 44100,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    });
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     
                     if (!resume) {
@@ -937,7 +955,12 @@
             function startRecording() {
                 setState('recording', '録音中...');
                 audioChunks = [];
-                mediaRecorder = new MediaRecorder(stream);
+                // モノラル録音を確実にするための設定
+                const options = {
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 192000  // 192kbpsに変更
+                };
+                mediaRecorder = new MediaRecorder(stream, options);
                 mediaRecorder.addEventListener("dataavailable", e => audioChunks.push(e.data));
                 mediaRecorder.addEventListener("stop", handleRecordingStop);
                 

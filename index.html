@@ -93,7 +93,15 @@
                             </div>
                         </div>
                         <div id="editor-content" class="hidden p-3">
-                            <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。"></textarea>
+                            <textarea id="script-editor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 script-editor" placeholder="台本をここに貼り付けるか、上記のオプションから選択してください。1行に1つの文章を記述してください。
+
+基本形式（テキスト）
+おはようございます。
+こんにちは。
+
+複雑な形式（<ID>:<元テキスト（<ルビ>）>,<正規化テキスト>）
+No.001:今日（きょう）の天気（てんき）。,キョウノテンキ。
+No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></textarea>
                             <div class="flex justify-between items-center mt-2">
                                 <span id="script-line-count" class="text-sm text-gray-500">0行</span>
                                 <div class="flex space-x-2">

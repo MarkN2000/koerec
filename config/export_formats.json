@@ -1,19 +1,34 @@
 {
   "formats": [
     {
-      "id": "txt",
-      "name": "TXT形式",
+      "id": "style_bert_vits2",
+      "name": "Style-BERT-VITS2等",
       "description": "音声ファイル名|話者名|言語|文章内容の形式",
-      "extension": ".txt"
+      "outputFile": "esd.list",
+      "format": "filename|speaker|language|text",
+      "showSpeakerField": true,
+      "showLanguageField": true
     },
     {
-      "id": "zip",
-      "name": "ZIP形式",
-      "description": "音声ファイル + 対応表を含むZIPファイル",
-      "extension": ".zip"
+      "id": "ljspeech",
+      "name": "LJSpeech",
+      "description": "ファイル名ID|元のテキスト|正規化されたテキストの形式",
+      "outputFile": "list.txt",
+      "format": "filename_id|original_text|normalized_text",
+      "showSpeakerField": false,
+      "showLanguageField": false
+    },
+    {
+      "id": "simple",
+      "name": "シンプル",
+      "description": "音声ファイル名|テキストの形式",
+      "outputFile": "list.txt",
+      "format": "filename|text",
+      "showSpeakerField": false,
+      "showLanguageField": false
     }
   ],
-  "defaultFormat": "txt",
+  "defaultFormat": "style_bert_vits2",
   "metadata": {
     "speaker": "test_speaker",
     "language": "JP"

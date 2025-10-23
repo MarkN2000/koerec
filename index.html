@@ -112,7 +112,7 @@
             <div class="mb-8">
                 <h2 class="text-xl font-semibold mb-4">エクスポート形式</h2>
                 <select id="export-format-select" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4">
-                    <option value="standard">標準形式（音声ファイル名|話者名|言語|文章内容）</option>
+                    <!-- 動的に生成される -->
                 </select>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -380,8 +380,100 @@
                 });
             }
 
+            // エクスポート形式の読み込み
+            let exportFormats = {};
+            
+            async function loadExportFormats() {
+                try {
+                    const response = await fetch('config/export_formats.json');
+                    const data = await response.json();
+                    exportFormats = data;
+                    
+                    // セレクトボックスを更新
+                    updateExportFormatSelect();
+                } catch (error) {
+                    console.error('エクスポート形式の読み込みに失敗しました:', error);
+                    // フォールバック用のデフォルト形式
+                    exportFormats = {
+                        formats: [
+                            {
+                                id: "style_bert_vits2",
+                                name: "Style-BERT-VITS2等",
+                                description: "音声ファイル名|話者名|言語|文章内容の形式",
+                                outputFile: "esd.list",
+                                format: "filename|speaker|language|text",
+                                showSpeakerField: true,
+                                showLanguageField: true
+                            },
+                            {
+                                id: "ljspeech",
+                                name: "LJSpeech",
+                                description: "ファイル名ID|元のテキスト|正規化されたテキストの形式",
+                                outputFile: "list.txt",
+                                format: "filename_id|original_text|normalized_text",
+                                showSpeakerField: false,
+                                showLanguageField: false
+                            },
+                            {
+                                id: "simple",
+                                name: "シンプル",
+                                description: "音声ファイル名|テキストの形式",
+                                outputFile: "list.txt",
+                                format: "filename|text",
+                                showSpeakerField: false,
+                                showLanguageField: false
+                            }
+                        ],
+                        defaultFormat: "style_bert_vits2"
+                    };
+                    updateExportFormatSelect();
+                }
+            }
+            
+            function updateExportFormatSelect() {
+                exportFormatSelect.innerHTML = '';
+                exportFormats.formats.forEach(format => {
+                    const option = document.createElement('option');
+                    option.value = format.id;
+                    option.textContent = `${format.name}（${format.description}）`;
+                    if (format.id === exportFormats.defaultFormat) {
+                        option.selected = true;
+                        exportFormat = format.id;
+                    }
+                    exportFormatSelect.appendChild(option);
+                });
+                
+                // 初期状態でフィールドの表示を更新
+                updateFieldVisibility();
+            }
+            
+            function updateFieldVisibility() {
+                const selectedFormat = exportFormats.formats.find(f => f.id === exportFormat);
+                if (!selectedFormat) return;
+                
+                const speakerField = document.getElementById('speaker-name').parentElement;
+                const languageField = document.getElementById('language').parentElement;
+                
+                // 話者名フィールドの表示/非表示
+                if (selectedFormat.showSpeakerField) {
+                    speakerField.style.display = 'block';
+                } else {
+                    speakerField.style.display = 'none';
+                }
+                
+                // 言語フィールドの表示/非表示
+                if (selectedFormat.showLanguageField) {
+                    languageField.style.display = 'block';
+                } else {
+                    languageField.style.display = 'none';
+                }
+            }
+
             // --- 初期化 ---
-            function initializeApp() {
+            async function initializeApp() {
+                // エクスポート形式の読み込み
+                await loadExportFormats();
+
                 // 台本リストの生成
                 updateScriptList();
 
@@ -404,6 +496,7 @@
                 // エクスポート形式変更
                 exportFormatSelect.addEventListener('change', (e) => {
                     exportFormat = e.target.value;
+                    updateFieldVisibility();
                 });
 
                 // プレビュー機能の初期化
@@ -1305,15 +1398,32 @@
                 const audioFolder = zip.folder('audio');
                 let transcript = '';
                 
+                // 選択されたエクスポート形式を取得
+                const selectedFormat = exportFormats.formats.find(f => f.id === exportFormat);
+                if (!selectedFormat) {
+                    throw new Error('選択されたエクスポート形式が見つかりません');
+                }
+                
                 recordings.sort((a,b) => a.index - b.index).forEach(data => {
                     const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
                     audioFolder.file(filename, data.blob); 
                     
-                    // 標準形式でTXTファイルの内容を生成
-                    transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
+                    // 選択された形式に応じてトランスクリプトを生成
+                    if (selectedFormat.id === 'style_bert_vits2') {
+                        // Style-BERT-VITS2形式
+                        transcript += `${filename}|${speakerName.value}|${language.value}|${data.text}\n`;
+                    } else if (selectedFormat.id === 'ljspeech') {
+                        // LJSpeech形式
+                        const filenameId = filename.replace('.wav', ''); // 拡張子を除去
+                        transcript += `${filenameId}|${data.text}|${data.text}\n`; // 正規化されたテキストは元のテキストと同じ
+                    } else if (selectedFormat.id === 'simple') {
+                        // シンプル形式
+                        transcript += `${filename}|${data.text}\n`;
+                    }
                 });
                 
-                zip.file('esd.list', transcript);
+                // 選択された形式に応じてファイル名を設定
+                zip.file(selectedFormat.outputFile, transcript);
                 
                 // ZIPファイル生成の設定を改善
                 const content = await zip.generateAsync({ 

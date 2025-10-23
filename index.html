@@ -373,40 +373,34 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             
             // 事前定義台本の読み込み
             async function loadPredefinedScripts() {
+                // ita_corpus_recitation.txtを読み込み
                 try {
-                    // ita_corpus_recitation.txtを読み込み
-                    const recitationResponse = await fetch('scripts/ita_corpus_recitation.txt');
+                    const recitationResponse = await fetch('scripts/ita_corpus_recitation.txt', { cache: 'no-cache' });
+                    if (!recitationResponse.ok) {
+                        throw new Error(`HTTP error! status: ${recitationResponse.status}`);
+                    }
                     const recitationText = await recitationResponse.text();
                     const recitationLines = recitationText.split('\n').filter(line => line.trim() !== '');
                     predefinedScripts.ita_corpus_recitation.lines = recitationLines;
-                    
-                    // ita_corpus_emotion.txtを読み込み
-                    const emotionResponse = await fetch('scripts/ita_corpus_emotion.txt');
+                    console.log('ita_corpus_recitation.txtを正常に読み込みました:', recitationLines.length + '行');
+                } catch (error) {
+                    console.error('ita_corpus_recitation.txtの読み込みに失敗しました:', error);
+                    throw error; // エラーを再スローして処理を停止
+                }
+                
+                // ita_corpus_emotion.txtを読み込み
+                try {
+                    const emotionResponse = await fetch('scripts/ita_corpus_emotion.txt', { cache: 'no-cache' });
+                    if (!emotionResponse.ok) {
+                        throw new Error(`HTTP error! status: ${emotionResponse.status}`);
+                    }
                     const emotionText = await emotionResponse.text();
                     const emotionLines = emotionText.split('\n').filter(line => line.trim() !== '');
                     predefinedScripts.ita_corpus_emotion.lines = emotionLines;
-                    
-                    console.log('台本ファイルを正常に読み込みました');
+                    console.log('ita_corpus_emotion.txtを正常に読み込みました:', emotionLines.length + '行');
                 } catch (error) {
-                    console.error('事前定義台本の読み込みに失敗しました:', error);
-                    console.log('デフォルトの台本データを使用します');
-                    
-                    // フォールバック用のデフォルト台本データ
-                    predefinedScripts.ita_corpus_recitation.lines = [
-                        "RECITATION324_001:女(おんな)の子(こ)がキッキッ嬉(うれ)しそう。,オンナノコガキッキッウレシソー。",
-                        "RECITATION324_002:ツァツォに旅行(りょこう)した。,ツァツォニリョコーシタ。",
-                        "RECITATION324_003:民衆(みんしゅう)がテュルリー宮殿(きゅうでん)に侵入(しんにゅう)した。,ミンシュウガテュルリーキュウデンニシンニュウシタ。",
-                        "RECITATION324_004:ハイチ共和国(きょうわこく)でトゥーサンルーヴェルテュールが勝利(しょうり)を収(おさ)められたのは、実際(じっさい)黄熱病(おうねつびょう)のおかげだった。,ハイチキョーワコクデトゥーサンルーヴェルテュールガショーリヲオサメラレタノワ、ジッサイオーネツビョーノオカゲダッタ。",
-                        "RECITATION324_005:レジャンドルは民衆(みんしゅう)をテュルリー宮殿(きゅうでん)に招(まね)いた。,レジャンドルワミンシュウヲテュルリーキュウデンニマネータ。"
-                    ];
-                    
-                    predefinedScripts.ita_corpus_emotion.lines = [
-                        "EMOTION100_001:えっ嘘(うそ)でしょ。,エッウソデショ。",
-                        "EMOTION100_002:シュヴァイツァーは見習(みなら)うべき人間(にんげん)です。,シュヴァイツァーワミナラウベキニンゲンデス。",
-                        "EMOTION100_003:デーヴィスさんはとても疲(つか)れているように見(み)える。,デーヴィスサンワトテモツカレテイルヨーニミエル。",
-                        "EMOTION100_004:スティーヴはジェーンから手紙(てがみ)をもらった。,スティーヴワジェーンカラテガミヲモラッタ。",
-                        "EMOTION100_005:彼女(かのじょ)はモーツァルトやベートーヴェンといった、古典派(こてんは)の作曲家(さっきょくか)が好(す)きだ。,カノジョワモーツァルトヤベートーヴェントイッタ、コテンハノサッキョクカガスキダ。"
-                    ];
+                    console.error('ita_corpus_emotion.txtの読み込みに失敗しました:', error);
+                    throw error; // エラーを再スローして処理を停止
                 }
                 
                 // allScriptsを更新

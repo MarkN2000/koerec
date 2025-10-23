@@ -1,0 +1,28 @@
+{
+    "scripts": [
+        "ita_corpus_emotion.txt",
+        "ita_corpus_recitation.txt",
+        "ROHAN4600_ENDSVILLE400.txt",
+        "ROHAN4600_GUEST1000_1.txt",
+        "ROHAN4600_GUEST1000_2.txt",
+        "ROHAN4600_GUEST1000_3.txt",
+        "ROHAN4600_GUEST1000_4.txt",
+        "ROHAN4600_GUEST1000_5.txt",
+        "ROHAN4600_LONG800_1.txt",
+        "ROHAN4600_LONG800_2.txt",
+        "ROHAN4600_LONG800_3.txt",
+        "ROHAN4600_LONG800_4.txt",
+        "ROHAN4600_MIDDLE1600_1.txt",
+        "ROHAN4600_MIDDLE1600_2.txt",
+        "ROHAN4600_MIDDLE1600_3.txt",
+        "ROHAN4600_MIDDLE1600_4.txt",
+        "ROHAN4600_MIDDLE1600_5.txt",
+        "ROHAN4600_MIDDLE1600_6.txt",
+        "ROHAN4600_MIDDLE1600_7.txt",
+        "ROHAN4600_MIDDLE1600_8.txt",
+        "ROHAN4600_SHORT800_1.txt",
+        "ROHAN4600_SHORT800_2.txt",
+        "ROHAN4600_SHORT800_3.txt",
+        "ROHAN4600_SHORT800_4.txt"
+    ]
+}

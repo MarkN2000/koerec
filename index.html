@@ -294,22 +294,11 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             const normalizeToggle = document.getElementById('normalize-toggle');
 
             // --- 事前定義台本データ ---
-            const predefinedScripts = {
-                "ita_corpus_recitation": { 
-                    name: "ita_corpus_recitation", 
-                    lines: [],
-                    isPredefined: true 
-                },
-                "ita_corpus_emotion": { 
-                    name: "ita_corpus_emotion", 
-                    lines: [],
-                    isPredefined: true 
-                }
-            };
+            let predefinedScripts = {};
 
             // --- カスタム台本管理 ---
             let customScripts = {};
-            let allScripts = { ...predefinedScripts };
+            let allScripts = { ...predefinedScripts, ...customScripts };
 
             // --- State Management ---
             let appState = 'idle';
@@ -373,36 +362,41 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             
             // 事前定義台本の読み込み
             async function loadPredefinedScripts() {
-                // ita_corpus_recitation.txtを読み込み
                 try {
-                    const recitationResponse = await fetch('scripts/ita_corpus_recitation.txt', { cache: 'no-cache' });
-                    if (!recitationResponse.ok) {
-                        throw new Error(`HTTP error! status: ${recitationResponse.status}`);
+                    const manifestResponse = await fetch('scripts/manifest.json', { cache: 'no-cache' });
+                    if (!manifestResponse.ok) {
+                        throw new Error(`manifest.jsonの読み込みに失敗しました: HTTP ${manifestResponse.status}`);
                     }
-                    const recitationText = await recitationResponse.text();
-                    const recitationLines = recitationText.split('\n').filter(line => line.trim() !== '');
-                    predefinedScripts.ita_corpus_recitation.lines = recitationLines;
-                    console.log('ita_corpus_recitation.txtを正常に読み込みました:', recitationLines.length + '行');
-                } catch (error) {
-                    console.error('ita_corpus_recitation.txtの読み込みに失敗しました:', error);
-                    throw error; // エラーを再スローして処理を停止
-                }
-                
-                // ita_corpus_emotion.txtを読み込み
-                try {
-                    const emotionResponse = await fetch('scripts/ita_corpus_emotion.txt', { cache: 'no-cache' });
-                    if (!emotionResponse.ok) {
-                        throw new Error(`HTTP error! status: ${emotionResponse.status}`);
+                    const manifest = await manifestResponse.json();
+                    const scriptFiles = manifest.scripts;
+
+                    for (const fileName of scriptFiles) {
+                        const scriptKey = fileName.replace('.txt', '');
+                        predefinedScripts[scriptKey] = {
+                            name: scriptKey,
+                            lines: [],
+                            isPredefined: true
+                        };
+
+                        try {
+                            const response = await fetch(`scripts/${fileName}`, { cache: 'no-cache' });
+                            if (!response.ok) {
+                                console.warn(`${fileName}の読み込みに失敗しました: HTTP ${response.status}`);
+                                continue;
+                            }
+                            const text = await response.text();
+                            const lines = text.split('\n').filter(line => line.trim() !== '');
+                            predefinedScripts[scriptKey].lines = lines;
+                            console.log(`${fileName}を正常に読み込みました:`, lines.length + '行');
+                        } catch (error) {
+                            console.error(`${fileName}の読み込みに失敗しました:`, error);
+                        }
                     }
-                    const emotionText = await emotionResponse.text();
-                    const emotionLines = emotionText.split('\n').filter(line => line.trim() !== '');
-                    predefinedScripts.ita_corpus_emotion.lines = emotionLines;
-                    console.log('ita_corpus_emotion.txtを正常に読み込みました:', emotionLines.length + '行');
                 } catch (error) {
-                    console.error('ita_corpus_emotion.txtの読み込みに失敗しました:', error);
-                    throw error; // エラーを再スローして処理を停止
+                    console.error('台本のマニフェストファイルの処理中にエラーが発生しました:', error);
+                    // ここでエラー処理を追加できます（例：ユーザーへの通知）
                 }
-                
+
                 // allScriptsを更新
                 allScripts = { ...predefinedScripts, ...customScripts };
             }

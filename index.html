@@ -340,6 +340,12 @@
             let selectedScripts = [];
             let exportFormat = 'standard';
             let normalizeEnabled = false;
+            
+            // トリミング機能の状態管理
+            let trimStart = 0;        // 開始位置（0-1の比率）
+            let trimEnd = 1;          // 終了位置（0-1の比率）
+            let isDraggingTrim = false; // トリミング線をドラッグ中かどうか
+            let draggedTrimLine = null; // ドラッグ中の線（'start' または 'end'）
 
             // --- IndexedDB Management ---
             const dbName = 'KoerecDB';
@@ -830,6 +836,69 @@
             audioPlayer.addEventListener('play', () => playBtn.innerHTML = '<i class="fas fa-pause"></i>');
             audioPlayer.addEventListener('pause', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
             audioPlayer.addEventListener('ended', () => playBtn.innerHTML = '<i class="fas fa-play"></i>');
+            
+            // トリミング済み音声の再生
+            let trimmedAudioBlob = null;
+            
+            // トリミング済み音声を生成する関数
+            async function createTrimmedAudio(originalBlob, startRatio, endRatio) {
+                try {
+                    const arrayBuffer = await originalBlob.arrayBuffer();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    
+                    const startSample = Math.floor(startRatio * audioBuffer.length);
+                    const endSample = Math.floor(endRatio * audioBuffer.length);
+                    const trimmedLength = endSample - startSample;
+                    
+                    // トリミング済みのAudioBufferを作成
+                    const trimmedBuffer = audioContext.createBuffer(
+                        audioBuffer.numberOfChannels,
+                        trimmedLength,
+                        audioBuffer.sampleRate
+                    );
+                    
+                    // 音声データをコピー
+                    for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+                        const originalData = audioBuffer.getChannelData(channel);
+                        const trimmedData = trimmedBuffer.getChannelData(channel);
+                        
+                        for (let i = 0; i < trimmedLength; i++) {
+                            trimmedData[i] = originalData[startSample + i];
+                        }
+                    }
+                    
+                    // AudioBufferをBlobに変換
+                    return await audioBufferToBlob(trimmedBuffer);
+                } catch (error) {
+                    console.error('トリミング処理でエラーが発生しました:', error);
+                    return originalBlob; // エラーの場合は元のBlobを返す
+                }
+            }
+            
+            // トリミング済み音声を再生する関数
+            async function playTrimmedAudio() {
+                if (!currentBlob) return;
+                
+                try {
+                    // トリミング済み音声を生成
+                    trimmedAudioBlob = await createTrimmedAudio(currentBlob, trimStart, trimEnd);
+                    
+                    // 再生用のaudio要素を作成
+                    const tempAudio = new Audio();
+                    tempAudio.src = URL.createObjectURL(trimmedAudioBlob);
+                    
+                    // 再生開始
+                    await tempAudio.play();
+                    
+                    // 再生終了時のクリーンアップ
+                    tempAudio.addEventListener('ended', () => {
+                        URL.revokeObjectURL(tempAudio.src);
+                    });
+                    
+                } catch (error) {
+                    console.error('トリミング済み音声の再生でエラーが発生しました:', error);
+                }
+            }
             resumeContinueBtn.addEventListener('click', () => startSession(true));
             resumeNewBtn.addEventListener('click', () => startSession(false));
 
@@ -847,7 +916,15 @@
                         if (appState === 'reviewing' && !nextBtn.disabled) goToNextLine(); 
                         break;
                     case 'KeyP': 
-                        if (appState === 'reviewing') audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause(); 
+                        if (appState === 'reviewing') {
+                            if (trimStart !== 0 || trimEnd !== 1) {
+                                // トリミングが設定されている場合はトリミング済み音声を再生
+                                playTrimmedAudio();
+                            } else {
+                                // トリミングが設定されていない場合は通常の音声を再生
+                                audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+                            }
+                        }
                         break;
                     case 'Backspace': 
                         if (appState === 'ready' && currentIndex > 0) goToPreviousLine(); 
@@ -1007,12 +1084,25 @@
             
             async function goToNextLine() {
                 if (!currentBlob) return;
+                
+                let finalBlob = currentBlob;
+                
+                // トリミングが設定されている場合はトリミング済み音声を使用
+                if (trimStart !== 0 || trimEnd !== 1) {
+                    try {
+                        finalBlob = await createTrimmedAudio(currentBlob, trimStart, trimEnd);
+                    } catch (error) {
+                        console.error('トリミング処理でエラーが発生しました:', error);
+                        // エラーの場合は元のBlobを使用
+                    }
+                }
+                
                 const id = `${currentScriptKey}_${String(currentIndex).padStart(4, '0')}`;
                 const data = { 
                     id, 
                     scriptKey: currentScriptKey, 
                     index: currentIndex, 
-                    blob: currentBlob, 
+                    blob: finalBlob, 
                     text: currentScript.lines[currentIndex] 
                 };
                 await dbAction('put', data);
@@ -1041,6 +1131,9 @@
             function setupForRerecording() { 
                 currentBlob = null; 
                 clearCanvas(); 
+                // トリミング状態をリセット
+                trimStart = 0;
+                trimEnd = 1;
                 setState('ready', '録音してください'); 
             }
 
@@ -1088,6 +1181,8 @@
                 const arrayBuffer = await blob.arrayBuffer(); 
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 const data = audioBuffer.getChannelData(0); 
+                
+                // 波形を描画
                 canvasCtx.lineWidth = 1; 
                 canvasCtx.strokeStyle = '#60a5fa'; 
                 canvasCtx.beginPath();
@@ -1099,6 +1194,34 @@
                     else canvasCtx.lineTo(x, y); 
                     x += sliceWidth; 
                 }
+                canvasCtx.stroke();
+                
+                // トリミング線を描画
+                drawTrimLines();
+            }
+            
+            function drawTrimLines() {
+                const startX = trimStart * canvas.width;
+                const endX = trimEnd * canvas.width;
+                
+                // 選択範囲をハイライト
+                canvasCtx.fillStyle = 'rgba(34, 197, 94, 0.2)';
+                canvasCtx.fillRect(startX, 0, endX - startX, canvas.height);
+                
+                // 開始線（緑）
+                canvasCtx.strokeStyle = '#22c55e';
+                canvasCtx.lineWidth = 3;
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(startX, 0);
+                canvasCtx.lineTo(startX, canvas.height);
+                canvasCtx.stroke();
+                
+                // 終了線（赤）
+                canvasCtx.strokeStyle = '#ef4444';
+                canvasCtx.lineWidth = 3;
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(endX, 0);
+                canvasCtx.lineTo(endX, canvas.height);
                 canvasCtx.stroke();
             }
 
@@ -1169,6 +1292,61 @@
                 }, 1000);
             }
 
+
+            // トリミング機能のマウスイベント
+            canvas.addEventListener('mousedown', handleTrimMouseDown);
+            canvas.addEventListener('mousemove', handleTrimMouseMove);
+            canvas.addEventListener('mouseup', handleTrimMouseUp);
+            canvas.addEventListener('mouseleave', handleTrimMouseUp);
+            
+            // トリミング機能のマウスイベントハンドラー
+            function handleTrimMouseDown(e) {
+                if (appState !== 'reviewing') return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const clickRatio = x / canvas.width;
+                
+                // 最も近い線を選択
+                const startDistance = Math.abs(clickRatio - trimStart);
+                const endDistance = Math.abs(clickRatio - trimEnd);
+                
+                if (startDistance < endDistance && startDistance < 0.05) {
+                    draggedTrimLine = 'start';
+                } else if (endDistance < 0.05) {
+                    draggedTrimLine = 'end';
+                } else {
+                    return;
+                }
+                
+                isDraggingTrim = true;
+                canvas.style.cursor = 'ew-resize';
+            }
+            
+            function handleTrimMouseMove(e) {
+                if (!isDraggingTrim || !draggedTrimLine) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const newRatio = Math.max(0, Math.min(1, x / canvas.width));
+                
+                if (draggedTrimLine === 'start') {
+                    trimStart = Math.min(newRatio, trimEnd - 0.01); // 終了線より前に制限
+                } else if (draggedTrimLine === 'end') {
+                    trimEnd = Math.max(newRatio, trimStart + 0.01); // 開始線より後に制限
+                }
+                
+                // 波形を再描画
+                if (currentBlob) {
+                    visualizeStatic(currentBlob);
+                }
+            }
+            
+            function handleTrimMouseUp(e) {
+                isDraggingTrim = false;
+                draggedTrimLine = null;
+                canvas.style.cursor = 'default';
+            }
 
             // アプリケーション初期化
             initializeApp();

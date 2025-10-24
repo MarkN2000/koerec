@@ -48,6 +48,12 @@
 </head>
 <body class="text-gray-800 min-h-screen">
 
+    <!-- グローバルナビ（左上固定） -->
+    <nav class="fixed top-3 left-3 z-50 flex items-center space-x-2">
+        <a href="https://markn2000.com/" class="px-3 py-1 bg-white/90 hover:bg-white text-gray-800 rounded-md border border-gray-300 shadow-sm text-sm" title="MarkNのホームページに移動">MarkNホームページへ</a>
+        <button id="home-btn" class="px-3 py-1 bg-white/90 hover:bg-white text-gray-800 rounded-md border border-gray-300 shadow-sm text-sm" title="Koerecの初期ページに戻る">ホームへ戻る</button>
+    </nav>
+
     <div id="app-container" class="w-full max-w-4xl mx-auto p-6 md:p-8 bg-white rounded-2xl shadow-xl mt-8 mb-8">
         
         <!-- 初期画面 -->
@@ -305,6 +311,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             const resumeNewBtn = document.getElementById('resume-new-btn');
             const resumeContinueBtn = document.getElementById('resume-continue-btn');
             const normalizeToggle = document.getElementById('normalize-toggle');
+            const homeBtn = document.getElementById('home-btn');
+            // 初期画面では「ホームへ戻る」を非表示
+            homeBtn.style.display = 'none';
 
             // --- 事前定義台本データ ---
             let predefinedScripts = {};
@@ -992,6 +1001,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             restartBtn.addEventListener('click', () => { 
                 dbAction('clear').then(() => location.reload()); 
             });
+            homeBtn.addEventListener('click', goHome);
             
             document.addEventListener('keydown', e => { 
                 if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && 
@@ -1153,9 +1163,43 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     
                     initialScreen.style.display = 'none';
                     recordingScreen.style.display = 'block';
+                    // 録音画面に入ったら「ホームへ戻る」を表示
+                    homeBtn.style.display = 'inline-block';
                     updateDisplay();
                 } catch (err) { 
                     alert("マイクへのアクセスが必要です。ブラウザの設定を確認し、マイクの使用を許可してください。"); 
+                }
+            }
+
+            function goHome() {
+                try {
+                    if (audioPlayer) {
+                        audioPlayer.pause();
+                        audioPlayer.src = '';
+                    }
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                        stream = null;
+                    }
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                    }
+                    if (audioContext && audioContext.state !== 'closed') {
+                        audioContext.close();
+                        audioContext = null;
+                    }
+                    initialScreen.style.display = 'block';
+                    recordingScreen.style.display = 'none';
+                    completionScreen.style.display = 'none';
+                    setState('idle', '録音してください');
+                    resumeModal.classList.add('hidden');
+                    resumeModal.classList.add('opacity-0');
+                    // 初期画面に戻ったら「ホームへ戻る」を非表示
+                    homeBtn.style.display = 'none';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } catch (e) {
+                    console.error('ホームへ戻る処理でエラーが発生しました:', e);
                 }
             }
 
@@ -1175,6 +1219,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 appState = 'finished';
                 recordingScreen.style.display = 'none';
                 completionScreen.style.display = 'block';
+                // 完了画面でも「ホームへ戻る」を表示
+                homeBtn.style.display = 'inline-block';
                 if (stream) stream.getTracks().forEach(track => track.stop());
                 if (audioContext && audioContext.state !== 'closed') audioContext.close();
             }

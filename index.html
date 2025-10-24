@@ -339,6 +339,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             let selectedScripts = [];
             let exportFormat = 'standard';
             let normalizeEnabled = false;
+            let shouldWarnBeforeUnload = false; // 離脱警告フラグ
             
             // トリミング機能の状態管理
             let trimStart = 0;        // 開始位置（0-1の比率）
@@ -999,9 +1000,17 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             playBtn.addEventListener('click', () => handleShortcut('KeyP'));
             downloadBtn.addEventListener('click', createAndDownloadFiles);
             restartBtn.addEventListener('click', () => { 
+                // 内部リロードの際は警告を抑制
+                shouldWarnBeforeUnload = false;
                 dbAction('clear').then(() => location.reload()); 
             });
-            homeBtn.addEventListener('click', goHome);
+            homeBtn.addEventListener('click', () => {
+                if (shouldWarnBeforeUnload) {
+                    const confirmed = confirm('現在の録音進捗が失われます。ホームへ戻りますか？');
+                    if (!confirmed) return;
+                }
+                goHome();
+            });
             
             document.addEventListener('keydown', e => { 
                 if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && 
@@ -1009,6 +1018,14 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     e.preventDefault(); 
                     handleShortcut(e.code); 
                 } 
+            });
+
+            // ページ離脱（リロード/タブを閉じる/他ページへ遷移）時の確認
+            window.addEventListener('beforeunload', (e) => {
+                if (shouldWarnBeforeUnload) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
             });
             
             audioPlayer.addEventListener('play', () => playBtn.innerHTML = '<i class="fas fa-pause"></i>');
@@ -1161,6 +1178,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     const scriptLines = loadSelectedScripts();
                     currentScript = { name: "統合台本", lines: scriptLines };
                     
+                    // セッション開始：離脱確認を有効化
+                    shouldWarnBeforeUnload = true;
+
                     initialScreen.style.display = 'none';
                     recordingScreen.style.display = 'block';
                     // 録音画面に入ったら「ホームへ戻る」を表示
@@ -1197,6 +1217,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     resumeModal.classList.add('opacity-0');
                     // 初期画面に戻ったら「ホームへ戻る」を非表示
                     homeBtn.style.display = 'none';
+                    // 明示的にホームに戻った場合は離脱警告を無効化
+                    shouldWarnBeforeUnload = false;
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } catch (e) {
                     console.error('ホームへ戻る処理でエラーが発生しました:', e);
@@ -1221,6 +1243,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 completionScreen.style.display = 'block';
                 // 完了画面でも「ホームへ戻る」を表示
                 homeBtn.style.display = 'inline-block';
+                // セッション完了：離脱確認を無効化
+                shouldWarnBeforeUnload = false;
                 if (stream) stream.getTracks().forEach(track => track.stop());
                 if (audioContext && audioContext.state !== 'closed') audioContext.close();
             }

@@ -1660,8 +1660,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 if (appState !== 'reviewing') return;
                 
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const clickRatio = x / canvas.width;
+                const x = e.clientX - rect.left; // CSSピクセル
+                const clickRatio = x / canvas.offsetWidth; // CSS幅基準で比率を算出
                 
                 // 最も近い線を選択
                 const startDistance = Math.abs(clickRatio - trimStart);
@@ -1682,8 +1682,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             function handleTrimMouseMove(e) {
                 if (isDraggingTrim && draggedTrimLine) {
                     const rect = canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const newRatio = Math.max(0, Math.min(1, x / canvas.width));
+                    const x = e.clientX - rect.left; // CSSピクセル
+                    const newRatio = Math.max(0, Math.min(1, x / canvas.offsetWidth)); // CSS幅基準
                     
                     if (draggedTrimLine === 'start') {
                         trimStart = Math.min(newRatio, trimEnd - 0.01); // 終了線より前に制限
@@ -1700,15 +1700,15 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 if (appState !== 'reviewing' || isDraggingTrim) return;
                 
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const clickRatio = x / canvas.width;
+                const x = e.clientX - rect.left; // CSSピクセル
+                const y = e.clientY - rect.top; // CSSピクセル
+                const clickRatio = x / canvas.offsetWidth; // CSS幅基準
                 
                 // ハンドルの範囲をチェック（絵文字サイズに調整）
                 const handleSize = 20;
                 const handleY = 8;
-                const startX = trimStart * canvas.width;
-                const endX = trimEnd * canvas.width;
+                const startX = trimStart * canvas.offsetWidth; // CSS幅基準
+                const endX = trimEnd * canvas.offsetWidth; // CSS幅基準
                 
                 let newHoveredLine = null;
                 let newCursor = 'default';

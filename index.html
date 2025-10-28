@@ -854,13 +854,20 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 saveCustomScripts();
                 allScripts = { ...predefinedScripts, ...customScripts };
                 updateScriptList();
+                
+                // 新しく追加された台本を自動選択
+                const newScriptCheckbox = document.querySelector(`[data-key="${key}"]`);
+                if (newScriptCheckbox) {
+                    newScriptCheckbox.textContent = '☑';
+                }
+                
                 updatePreview(); // プレビューを更新
                 
                 // エディタをリセット
                 scriptEditor.value = '';
                 updateLineCount();
                 
-                alert('台本を保存しました。');
+                alert('台本を保存し、自動的に選択しました。');
             }
 
             async function handleCustomScriptUpload(event) {

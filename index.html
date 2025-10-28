@@ -429,10 +429,19 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 // :以降の部分を取得
                 const colonIndex = text.indexOf(':');
                 if (colonIndex === -1) {
-                    // :がない場合は元のテキストをそのまま使用
+                    // :がない場合でも、`,` があるなら「表示用,正規化」の2項形式として扱う
+                    const commaIndexAll = text.indexOf(',');
+                    if (commaIndexAll === -1) {
+                        // カンマもなければそのまま使用
+                        return {
+                            displayText: text,
+                            normalizedText: text
+                        };
+                    }
+                    // 先頭からのカンマで分割
                     return {
-                        displayText: text,
-                        normalizedText: text
+                        displayText: text.substring(0, commaIndexAll),
+                        normalizedText: text.substring(commaIndexAll + 1)
                     };
                 }
                 

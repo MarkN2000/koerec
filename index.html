@@ -1670,7 +1670,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             async function createZipFile(recordings) {
                 const zip = new JSZip(); 
-                const audioFolder = zip.folder('audio');
+                const audioFolder = zip.folder('raw');
                 let transcript = '';
                 
                 // 選択されたエクスポート形式を取得

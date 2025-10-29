@@ -4,6 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Koerec - 高速音声コーパス作成ツール</title>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <meta name="description" content="Koerecは、ブラウザだけで高速に音声コーパスを作成できる無料ツール。台本選択、録音、ノーマライズ、ZIPエクスポートまでワンクリックで完了。">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Koerec - 高速音声コーパス作成ツール">
+    <meta property="og:description" content="Koerecは、ブラウザだけで高速に音声コーパスを作成できる無料ツール。台本選択、録音、ノーマライズ、ZIPエクスポートまでワンクリックで完了。">
+    <link rel="icon" href="assets/images/icons/favicon.ico">
+    <link rel="icon" href="assets/images/icons/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/images/icons/favicon-32x32.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="assets/images/icons/favicon-16x16.png" sizes="16x16" type="image/png">
+    <link rel="icon" href="assets/images/icons/favicon-96x96.png" sizes="96x96" type="image/png">
+    <link rel="apple-touch-icon" href="assets/images/icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="canonical" href="https://koerec.markn2000.com/">
+    <meta property="og:url" content="https://koerec.markn2000.com/">
+    <meta property="og:image" content="https://koerec.markn2000.com/assets/images/ogp_default.webp">
+    <meta property="og:site_name" content="Koerec">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Koerec - 高速音声コーパス作成ツール">
+    <meta name="twitter:description" content="Koerecは、ブラウザだけで高速に音声コーパスを作成できる無料ツール。台本選択、録音、ノーマライズ、ZIPエクスポートまでワンクリックで完了。">
+    <meta name="twitter:image" content="https://koerec.markn2000.com/assets/images/ogp_default.webp">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -59,6 +85,10 @@
     </style>
 </head>
 <body class="text-gray-800 min-h-screen">
+
+    <noscript>
+        このサイトはJavaScriptが有効である必要があります。Koerecはブラウザで音声コーパスを作成できるツールです。
+    </noscript>
 
     <!-- グローバルナビ（左上固定） -->
     <nav class="fixed top-3 left-3 z-50 flex items-center space-x-2">
@@ -192,11 +222,15 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 <p id="status-text" class="text-lg text-gray-700 font-medium">録音してください</p>
             </div>
             
-            <!-- ノーマライズ設定 -->
-            <div class="flex items-center justify-center mb-4">
+            <!-- ノイズ/ノーマライズ設定（横並び） -->
+            <div class="flex items-center justify-center mb-4 space-x-6">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" id="normalize-toggle" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
                     <span class="text-sm text-gray-700">音量自動調整</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" id="noise-reduction-toggle" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                    <span class="text-sm text-gray-700">ノイズ除去</span>
                 </label>
             </div>
             
@@ -258,11 +292,11 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="text-center">
                         <h4 class="text-sm font-medium text-yellow-800 mb-2">プロパティをクリック</h4>
-                        <img src="assets/images/スクリーンショット 2025-10-23 150007.webp" alt="プロパティ画面のスクリーンショット" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
+                        <img src="assets/images/スクリーンショット 2025-10-23 150007.webp" alt="プロパティ画面のスクリーンショット" loading="lazy" decoding="async" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
                     </div>
                     <div class="text-center">
                         <h4 class="text-sm font-medium text-yellow-800 mb-2">許可するにチェック</h4>
-                        <img src="assets/images/スクリーンショット 2025-10-23 150033.webp" alt="セキュリティ設定のスクリーンショット" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
+                        <img src="assets/images/スクリーンショット 2025-10-23 150033.webp" alt="セキュリティ設定のスクリーンショット" loading="lazy" decoding="async" class="w-full max-w-sm mx-auto rounded-lg shadow-md border border-yellow-300">
                     </div>
                 </div>
                 
@@ -323,6 +357,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             const resumeNewBtn = document.getElementById('resume-new-btn');
             const resumeContinueBtn = document.getElementById('resume-continue-btn');
             const normalizeToggle = document.getElementById('normalize-toggle');
+            const noiseReductionToggle = document.getElementById('noise-reduction-toggle');
             const homeBtn = document.getElementById('home-btn');
             // 初期画面では「ホームへ戻る」を非表示
             homeBtn.style.display = 'none';
@@ -351,6 +386,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             let selectedScripts = [];
             let exportFormat = 'standard';
             let normalizeEnabled = false;
+            let noiseReductionEnabled = false;
             let shouldWarnBeforeUnload = false; // 離脱警告フラグ
             
             // トリミング機能の状態管理
@@ -441,10 +477,19 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 // :以降の部分を取得
                 const colonIndex = text.indexOf(':');
                 if (colonIndex === -1) {
-                    // :がない場合は元のテキストをそのまま使用
+                    // :がない場合でも、`,` があるなら「表示用,正規化」の2項形式として扱う
+                    const commaIndexAll = text.indexOf(',');
+                    if (commaIndexAll === -1) {
+                        // カンマもなければそのまま使用
+                        return {
+                            displayText: text,
+                            normalizedText: text
+                        };
+                    }
+                    // 先頭からのカンマで分割
                     return {
-                        displayText: text,
-                        normalizedText: text
+                        displayText: text.substring(0, commaIndexAll),
+                        normalizedText: text.substring(commaIndexAll + 1)
                     };
                 }
                 
@@ -614,6 +659,12 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 // ノーマライズ設定の保存
                 normalizeToggle.addEventListener('change', saveNormalizeSetting);
 
+                // ノイズ除去設定の読み込み
+                loadNoiseReductionSetting();
+
+                // ノイズ除去設定の保存
+                noiseReductionToggle.addEventListener('change', saveNoiseReductionSetting);
+
                 // IndexedDB初期化
                 initDB();
             }
@@ -640,6 +691,20 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             function saveNormalizeSetting() {
                 normalizeEnabled = normalizeToggle.checked;
                 localStorage.setItem('normalize_enabled', normalizeEnabled.toString());
+            }
+
+            // --- ノイズ除去設定管理 ---
+            function loadNoiseReductionSetting() {
+                const saved = localStorage.getItem('noise_reduction_enabled');
+                if (saved !== null) {
+                    noiseReductionEnabled = saved === 'true';
+                    noiseReductionToggle.checked = noiseReductionEnabled;
+                }
+            }
+
+            function saveNoiseReductionSetting() {
+                noiseReductionEnabled = noiseReductionToggle.checked;
+                localStorage.setItem('noise_reduction_enabled', noiseReductionEnabled.toString());
             }
 
             // --- ノーマライズ処理 ---
@@ -748,6 +813,53 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 return new Blob([buffer], { type: 'audio/wav' });
             }
 
+            // --- 簡易ノイズ除去（オフライン：ノイズゲート） ---
+            async function reduceNoiseOffline(audioBlob) {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+                }
+                try {
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                    const numChannels = audioBuffer.numberOfChannels;
+                    const outBuffer = audioContext.createBuffer(numChannels, audioBuffer.length, audioBuffer.sampleRate);
+
+                    // パラメータ（必要に応じて調整）
+                    const threshold = 0.012; // しきい値
+                    const attenuation = 0.12; // 減衰率
+                    const attackSamples = Math.floor(0.002 * audioBuffer.sampleRate); // 2ms
+                    const releaseSamples = Math.floor(0.040 * audioBuffer.sampleRate); // 40ms
+
+                    for (let ch = 0; ch < numChannels; ch++) {
+                        const input = audioBuffer.getChannelData(ch);
+                        const output = outBuffer.getChannelData(ch);
+                        let gain = 1.0;
+                        let env = 0.0;
+                        for (let i = 0; i < input.length; i++) {
+                            const x = input[i];
+                            // 簡易エンベロープ追従
+                            const absx = Math.abs(x);
+                            if (absx > env) {
+                                env += (absx - env) / Math.max(1, attackSamples);
+                            } else {
+                                env += (absx - env) / Math.max(1, releaseSamples);
+                            }
+                            // ゲート係数
+                            const gate = env < threshold ? attenuation : 1.0;
+                            // スムーズな遷移
+                            gain += (gate - gain) * 0.1;
+                            output[i] = x * gain;
+                        }
+                    }
+
+                    return await audioBufferToBlob(outBuffer);
+                } catch (e) {
+                    console.error('ノイズ除去処理でエラーが発生しました:', e);
+                    return audioBlob;
+                }
+            }
+
             // --- 台本リスト管理 ---
             function showScriptListLoading() {
                 scriptList.innerHTML = `
@@ -842,13 +954,20 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 saveCustomScripts();
                 allScripts = { ...predefinedScripts, ...customScripts };
                 updateScriptList();
+                
+                // 新しく追加された台本を自動選択
+                const newScriptCheckbox = document.querySelector(`[data-key="${key}"]`);
+                if (newScriptCheckbox) {
+                    newScriptCheckbox.textContent = '☑';
+                }
+                
                 updatePreview(); // プレビューを更新
                 
                 // エディタをリセット
                 scriptEditor.value = '';
                 updateLineCount();
                 
-                alert('台本を保存しました。');
+                alert('台本を保存し、自動的に選択しました。');
             }
 
             async function handleCustomScriptUpload(event) {
@@ -1192,13 +1311,13 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     stream = await navigator.mediaDevices.getUserMedia({ 
                         audio: {
                             channelCount: 1,  // モノラル録音に強制
-                            sampleRate: 44100,
+                            sampleRate: 48000,
                             echoCancellation: true,
                             noiseSuppression: true,
                             autoGainControl: true
                         }
                     });
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
                     
                     if (!resume) {
                         currentIndex = 0;
@@ -1339,8 +1458,18 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             async function handleRecordingStop() {
                 let finalBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                
-                // ノーマライズが有効な場合は、録音後にノーマライズ処理を適用
+
+                // 48kHzで録音している前提だが、念のためAudioContextのSRに合わせて処理
+                if (noiseReductionEnabled) {
+                    try {
+                        // まずノイズ除去（オフライン）
+                        finalBlob = await reduceNoiseOffline(finalBlob);
+                    } catch (e) {
+                        console.error('ノイズ除去に失敗しました:', e);
+                    }
+                }
+
+                // 次にノーマライズ適用（有効時）
                 if (normalizeEnabled) {
                     try {
                         finalBlob = await normalizeAudio(finalBlob);
@@ -1349,7 +1478,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                         // エラーの場合は元のBlobを使用
                     }
                 }
-                
+
                 currentBlob = finalBlob;
                 audioPlayer.src = URL.createObjectURL(currentBlob);
                 setState('reviewing', '音声を確認してください');
@@ -1575,7 +1704,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             async function createZipFile(recordings) {
                 const zip = new JSZip(); 
-                const audioFolder = zip.folder('audio');
+                const audioFolder = zip.folder('raw');
                 let transcript = '';
                 
                 // 選択されたエクスポート形式を取得
@@ -1655,8 +1784,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 if (appState !== 'reviewing') return;
                 
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const clickRatio = x / canvas.width;
+                const x = e.clientX - rect.left; // CSSピクセル
+                const clickRatio = x / canvas.offsetWidth; // CSS幅基準で比率を算出
                 
                 // 最も近い線を選択
                 const startDistance = Math.abs(clickRatio - trimStart);
@@ -1677,8 +1806,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             function handleTrimMouseMove(e) {
                 if (isDraggingTrim && draggedTrimLine) {
                     const rect = canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const newRatio = Math.max(0, Math.min(1, x / canvas.width));
+                    const x = e.clientX - rect.left; // CSSピクセル
+                    const newRatio = Math.max(0, Math.min(1, x / canvas.offsetWidth)); // CSS幅基準
                     
                     if (draggedTrimLine === 'start') {
                         trimStart = Math.min(newRatio, trimEnd - 0.01); // 終了線より前に制限
@@ -1695,15 +1824,15 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 if (appState !== 'reviewing' || isDraggingTrim) return;
                 
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const clickRatio = x / canvas.width;
+                const x = e.clientX - rect.left; // CSSピクセル
+                const y = e.clientY - rect.top; // CSSピクセル
+                const clickRatio = x / canvas.offsetWidth; // CSS幅基準
                 
                 // ハンドルの範囲をチェック（絵文字サイズに調整）
                 const handleSize = 20;
                 const handleY = 8;
-                const startX = trimStart * canvas.width;
-                const endX = trimEnd * canvas.width;
+                const startX = trimStart * canvas.offsetWidth; // CSS幅基準
+                const endX = trimEnd * canvas.offsetWidth; // CSS幅基準
                 
                 let newHoveredLine = null;
                 let newCursor = 'default';

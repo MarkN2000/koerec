@@ -946,12 +946,14 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 if (selectedScripts.length === 1) {
                     const script = selectedScripts[0];
                     previewTitle.textContent = `${script.name} (${script.lines.length}行)`;
+                    const previewLines = script.lines.map(line => parseText(line).displayText);
                     
                     if (isDetailedView) {
-                        previewText.textContent = script.lines.join('\n');
+                        previewText.textContent = previewLines.join('\n');
                         showFullPreviewBtn.textContent = '簡易表示';
                     } else {
-                        previewText.textContent = script.lines.slice(0, 5).join('\n') + (script.lines.length > 5 ? '\n...' : '');
+                        const summary = previewLines.slice(0, 5).join('\n');
+                        previewText.textContent = summary + (previewLines.length > 5 ? '\n...' : '');
                         showFullPreviewBtn.textContent = '詳細表示';
                     }
                     previewLineCount.textContent = `${script.lines.length}行`;
@@ -960,13 +962,18 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     previewTitle.textContent = `${selectedScripts.length}個の台本が選択されています (合計${totalLines}行)`;
                     
                     if (isDetailedView) {
-                        previewText.textContent = selectedScripts.map(script => 
-                            `${script.name}:\n${script.lines.join('\n')}`
+                        previewText.textContent = selectedScripts.map(script => {
+                            const previewLines = script.lines.map(line => parseText(line).displayText);
+                            return `${script.name}:\n${previewLines.join('\n')}`;
+                        }
                         ).join('\n\n---\n\n');
                         showFullPreviewBtn.textContent = '簡易表示';
                     } else {
-                        previewText.textContent = selectedScripts.map(script => 
-                            `${script.name}:\n${script.lines.slice(0, 2).join('\n')}${script.lines.length > 2 ? '\n...' : ''}`
+                        previewText.textContent = selectedScripts.map(script => {
+                            const previewLines = script.lines.map(line => parseText(line).displayText);
+                            const summary = previewLines.slice(0, 2).join('\n');
+                            return `${script.name}:\n${summary}${previewLines.length > 2 ? '\n...' : ''}`;
+                        }
                         ).join('\n\n');
                         showFullPreviewBtn.textContent = '詳細表示';
                     }

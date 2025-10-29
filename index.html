@@ -265,6 +265,12 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     </button>
                     <span class="shortcut-key mt-2">Enter</span>
                 </div>
+                <div class="flex flex-col items-center">
+                    <button id="skip-btn" class="w-20 h-20 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        <i class="fas fa-forward"></i>
+                    </button>
+                    <span class="shortcut-key mt-2">S</span>
+                </div>
             </div>
         </div>
 
@@ -360,6 +366,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             const restartBtn = document.getElementById('restart-btn');
             const canvas = document.getElementById('waveform-canvas');
             const canvasCtx = canvas.getContext('2d');
+            const skipBtn = document.getElementById('skip-btn');
             const resumeModal = document.getElementById('resume-modal');
             const resumeText = document.getElementById('resume-text');
             const resumeNewBtn = document.getElementById('resume-new-btn');
@@ -1176,6 +1183,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             recordBtn.addEventListener('click', () => handleShortcut('Space'));
             nextBtn.addEventListener('click', () => handleShortcut('Enter'));
             playBtn.addEventListener('click', () => handleShortcut('KeyP'));
+            skipBtn.addEventListener('click', () => {
+                skipCurrentLine();
+            });
             downloadBtn.addEventListener('click', createAndDownloadFiles);
             restartBtn.addEventListener('click', () => { 
                 // 内部リロードの際は警告を抑制
@@ -1298,6 +1308,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                                 audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
                             }
                         }
+                        break;
+                    case 'KeyS':
+                        skipCurrentLine();
                         break;
                     case 'Backspace': 
                         if (appState === 'ready' && currentIndex > 0) goToPreviousLine(); 
@@ -1433,6 +1446,15 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 recordBtn.disabled = !['ready', 'recording', 'reviewing'].includes(appState);
                 nextBtn.disabled = appState !== 'reviewing';
                 backBtn.disabled = !(appState === 'ready' && currentIndex > 0);
+                if (skipBtn) {
+                    if (['ready', 'reviewing'].includes(appState)) {
+                        skipBtn.disabled = false;
+                        skipBtn.className = 'w-20 h-20 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none';
+                    } else {
+                        skipBtn.disabled = true;
+                        skipBtn.className = 'w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none';
+                    }
+                }
                 
                 // 再生ボタンの状態管理
                 if (appState === 'reviewing') {
@@ -1541,6 +1563,32 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     index: currentIndex 
                 });
                 updateDisplay();
+            }
+
+            async function skipCurrentLine() {
+                if (!['ready', 'reviewing'].includes(appState)) return;
+                try {
+                    if (appState === 'reviewing') {
+                        if (!audioPlayer.paused) {
+                            audioPlayer.pause();
+                        }
+                        audioPlayer.currentTime = 0;
+                        audioPlayer.src = '';
+                    }
+                    currentBlob = null;
+                    trimStart = 0;
+                    trimEnd = 1;
+                    clearCanvas();
+                    currentIndex++;
+                    await dbAction('put', { 
+                        id: `progress_${currentScriptKey}`, 
+                        scriptKey: currentScriptKey, 
+                        index: currentIndex 
+                    });
+                    updateDisplay();
+                } catch (error) {
+                    console.error('スキップ処理でエラーが発生しました:', error);
+                }
             }
 
             async function goToPreviousLine() {
@@ -1738,8 +1786,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     throw new Error('選択されたエクスポート形式が見つかりません');
                 }
                 
-                recordings.sort((a,b) => a.index - b.index).forEach(data => {
-                    const filename = `audio_${String(data.index + 1).padStart(4, '0')}.wav`;
+                recordings.sort((a,b) => a.index - b.index).forEach((data, idx) => {
+                    const sequenceNumber = idx + 1;
+                    const filename = `audio_${String(sequenceNumber).padStart(4, '0')}.wav`;
                     audioFolder.file(filename, data.blob); 
                     
                     // テキストを解析

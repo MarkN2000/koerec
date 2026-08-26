@@ -122,11 +122,15 @@
                 <div id="script-preview" class="mb-6 hidden">
                     <div class="border border-gray-300 rounded-lg bg-gray-50">
                         <div id="preview-header" class="flex items-center justify-between p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100">
-                            <div class="flex items-center">
+                            <div class="flex items-start min-w-0 pr-2">
                                 <i id="preview-icon" class="fas fa-chevron-right text-gray-500 mr-2"></i>
-                                <span id="preview-title" class="font-medium text-gray-700"></span>
+                                <div class="min-w-0">
+                                    <div id="preview-title" class="font-medium text-gray-700"></div>
+                                    <div id="recording-time-estimate" class="mt-1 text-sm text-gray-500" aria-live="polite"></div>
+                                    <div class="text-xs text-gray-500">録音後の確認なし〜毎回確認する場合の目安（10行あたり約1〜3分）</div>
+                                </div>
                             </div>
-                            <button id="show-full-preview-btn" class="text-sm text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">詳細表示</button>
+                            <button id="show-full-preview-btn" class="flex-shrink-0 text-sm text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50">詳細表示</button>
                         </div>
                         <div id="preview-content" class="hidden p-3">
                             <div id="preview-text" class="text-sm text-gray-600 whitespace-pre-line"></div>
@@ -218,7 +222,10 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     </button>
                     <span class="shortcut-key">Backspace</span>
                 </div>
-                <span id="progress-indicator" class="text-sm font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full"></span>
+                <div class="flex items-center space-x-3">
+                    <span id="progress-indicator" class="text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full"></span>
+                    <button id="skip-btn" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-lg shadow transition disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed">Skip</button>
+                </div>
             </div>
             <div id="text-display" class="bg-gray-50 p-6 rounded-lg text-center text-4xl font-semibold my-5 border border-gray-200 min-h-[150px] flex items-center justify-center"></div>
             <div class="w-full h-24 bg-gray-900 rounded-lg mb-5 overflow-hidden">
@@ -264,12 +271,6 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                         <i class="fas fa-arrow-right"></i>
                     </button>
                     <span class="shortcut-key mt-2">Enter</span>
-                </div>
-                <div class="flex flex-col items-center">
-                    <button id="skip-btn" class="w-20 h-20 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                        <i class="fas fa-forward"></i>
-                    </button>
-                    <span class="shortcut-key mt-2">S</span>
                 </div>
             </div>
         </div>
@@ -1102,10 +1103,40 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             let isDetailedView = false;
 
+            function formatRecordingDuration(minutes) {
+                const roundedMinutes = Math.ceil(minutes);
+                if (roundedMinutes < 60) {
+                    return `${roundedMinutes}分`;
+                }
+
+                const hours = Math.floor(roundedMinutes / 60);
+                const remainingMinutes = roundedMinutes % 60;
+                return remainingMinutes === 0
+                    ? `${hours}時間`
+                    : `${hours}時間${remainingMinutes}分`;
+            }
+
+            function getRecordingTimeEstimate(totalLines) {
+                const minimumMinutes = Math.ceil(totalLines / 10);
+                const maximumMinutes = Math.ceil(totalLines * 3 / 10);
+                let durationRange;
+
+                if (minimumMinutes === maximumMinutes) {
+                    durationRange = formatRecordingDuration(minimumMinutes);
+                } else if (maximumMinutes < 60) {
+                    durationRange = `${minimumMinutes}〜${maximumMinutes}分`;
+                } else {
+                    durationRange = `${formatRecordingDuration(minimumMinutes)}〜${formatRecordingDuration(maximumMinutes)}`;
+                }
+
+                return `予想録音時間：約${durationRange}`;
+            }
+
             function updatePreview() {
                 const selectedScripts = getSelectedScripts();
                 const previewDiv = document.getElementById('script-preview');
                 const previewTitle = document.getElementById('preview-title');
+                const recordingTimeEstimate = document.getElementById('recording-time-estimate');
                 const previewText = document.getElementById('preview-text');
                 const previewLineCount = document.getElementById('preview-line-count');
                 const showFullPreviewBtn = document.getElementById('show-full-preview-btn');
@@ -1122,6 +1153,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 }
 
                 previewDiv.classList.remove('hidden');
+                const totalLines = selectedScripts.reduce((sum, script) => sum + script.lines.length, 0);
+                recordingTimeEstimate.textContent = getRecordingTimeEstimate(totalLines);
 
                 if (selectedScripts.length === 1) {
                     const script = selectedScripts[0];
@@ -1138,7 +1171,6 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     }
                     previewLineCount.textContent = `${script.lines.length}行`;
                 } else {
-                    const totalLines = selectedScripts.reduce((sum, script) => sum + script.lines.length, 0);
                     previewTitle.textContent = `${selectedScripts.length}個の台本が選択されています (合計${totalLines}行)`;
                     
                     if (isDetailedView) {
@@ -1473,13 +1505,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 nextBtn.disabled = appState !== 'reviewing';
                 backBtn.disabled = !(appState === 'ready' && currentIndex > 0);
                 if (skipBtn) {
-                    if (['ready', 'reviewing'].includes(appState)) {
-                        skipBtn.disabled = false;
-                        skipBtn.className = 'w-20 h-20 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none';
-                    } else {
-                        skipBtn.disabled = true;
-                        skipBtn.className = 'w-20 h-20 bg-gray-400 text-white rounded-full flex items-center justify-center text-3xl shadow-lg transition-transform transform hover:scale-110 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none';
-                    }
+                    skipBtn.disabled = !['ready', 'reviewing'].includes(appState);
                 }
                 
                 // 再生ボタンの状態管理

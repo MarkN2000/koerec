@@ -1,33 +1,36 @@
 {
     "scripts": [
         {
-            "file": "システムっぽいセリフ集.txt",
+            "file": "音声アシスタント・操作案内.txt",
             "defaultSelected": true
         },
         {
-            "file": "普通のセリフ.txt",
+            "file": "アナウンス・ナレーション.txt"
+        },
+        {
+            "file": "日常会話_カジュアル.txt",
             "defaultSelected": true
         },
         {
-            "file": "ギャルゲnormal.txt"
+            "file": "日常会話_丁寧.txt"
         },
         {
-            "file": "ギャルゲhappy.txt"
+            "file": "会話応答・相槌.txt"
         },
         {
-            "file": "ギャルゲsad.txt"
+            "file": "明るい・元気.txt"
         },
         {
-            "file": "ギャルゲsexual.txt"
+            "file": "やさしい・落ち着き.txt"
         },
         {
-            "file": "ギャルゲangry.txt"
+            "file": "甘え・照れ.txt"
         },
         {
-            "file": "ささやきセリフ集.txt"
+            "file": "小声・ささやき.txt"
         },
         {
-            "file": "癖のあるセリフ.txt"
+            "file": "困惑・不安・悲しみ・苛立ち.txt"
         },
         {
             "file": "ita_corpus_emotion.txt",

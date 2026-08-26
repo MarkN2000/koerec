@@ -5,23 +5,28 @@
             "defaultSelected": true
         },
         {
-            "file": "アナウンス・ナレーション.txt"
+            "file": "アナウンス・ナレーション.txt",
+            "defaultSelected": true
         },
         {
             "file": "日常会話_カジュアル.txt",
             "defaultSelected": true
         },
         {
-            "file": "日常会話_丁寧.txt"
+            "file": "日常会話_丁寧.txt",
+            "defaultSelected": true
         },
         {
-            "file": "会話応答・相槌.txt"
+            "file": "会話応答・相槌.txt",
+            "defaultSelected": true
         },
         {
-            "file": "明るい・元気.txt"
+            "file": "明るい・元気.txt",
+            "defaultSelected": true
         },
         {
-            "file": "やさしい・落ち着き.txt"
+            "file": "やさしい・落ち着き.txt",
+            "defaultSelected": true
         },
         {
             "file": "甘え・照れ.txt"
@@ -33,8 +38,7 @@
             "file": "困惑・不安・悲しみ・苛立ち.txt"
         },
         {
-            "file": "ita_corpus_emotion.txt",
-            "defaultSelected": true
+            "file": "ita_corpus_emotion.txt"
         },
         {
             "file": "ita_corpus_recitation.txt"

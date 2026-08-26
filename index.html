@@ -454,14 +454,29 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                         throw new Error(`manifest.jsonの読み込みに失敗しました: HTTP ${manifestResponse.status}`);
                     }
                     const manifest = await manifestResponse.json();
-                    const scriptFiles = manifest.scripts;
+                    if (!Array.isArray(manifest.scripts)) {
+                        throw new Error('manifest.jsonのscriptsは配列である必要があります。');
+                    }
 
-                    for (const fileName of scriptFiles) {
-                        const scriptKey = fileName.replace('.txt', '');
+                    for (const [index, scriptConfig] of manifest.scripts.entries()) {
+                        if (!scriptConfig || typeof scriptConfig !== 'object' || Array.isArray(scriptConfig)) {
+                            throw new Error(`manifest.jsonのscripts[${index}]はオブジェクトである必要があります。`);
+                        }
+
+                        const fileName = scriptConfig.file;
+                        if (typeof fileName !== 'string' || fileName.trim() === '') {
+                            throw new Error(`manifest.jsonのscripts[${index}].fileは必須です。`);
+                        }
+                        if (scriptConfig.defaultSelected !== undefined && typeof scriptConfig.defaultSelected !== 'boolean') {
+                            throw new Error(`manifest.jsonのscripts[${index}].defaultSelectedは真偽値である必要があります。`);
+                        }
+
+                        const scriptKey = fileName.replace(/\.txt$/, '');
                         predefinedScripts[scriptKey] = {
                             name: scriptKey,
                             lines: [],
-                            isPredefined: true
+                            isPredefined: true,
+                            defaultSelected: scriptConfig.defaultSelected === true
                         };
 
                         try {
@@ -644,7 +659,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 await loadPredefinedScripts();
 
                 // 台本リストの生成
-                updateScriptList();
+                updateScriptList(getDefaultSelectedScriptKeys());
 
                 // 台本エディタの行数カウント
                 scriptEditor.addEventListener('input', updateLineCount);
@@ -670,12 +685,10 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
                 // プレビュー機能の初期化
                 initializePreview();
+                updatePreview();
 
                 // 折りたたみ式エディタの初期化
                 initializeCollapsibleEditor();
-
-                // 初期状態で録音開始ボタンを無効化
-                document.getElementById('start-btn').disabled = true;
 
                 // ノーマライズ設定の読み込み
                 loadNormalizeSetting();
@@ -901,7 +914,23 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     </div>`;
             }
 
-            function updateScriptList() {
+            function getDefaultSelectedScriptKeys() {
+                return new Set(
+                    Object.entries(predefinedScripts)
+                        .filter(([, script]) => script.defaultSelected && script.lines.length > 0)
+                        .map(([key]) => key)
+                );
+            }
+
+            function getSelectedScriptKeys() {
+                return new Set(
+                    Array.from(document.querySelectorAll('#script-list .script-checkbox'))
+                        .filter(checkbox => checkbox.textContent === '☑')
+                        .map(checkbox => checkbox.getAttribute('data-key'))
+                );
+            }
+
+            function updateScriptList(selectedScriptKeys = new Set()) {
                 scriptList.innerHTML = '';
                 
                 const scriptKeys = Object.keys(allScripts);
@@ -919,7 +948,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     item.className = 'flex items-center justify-between p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 cursor-pointer';
                     item.innerHTML = `
                         <div class="flex items-center flex-1">
-                            <span class="script-checkbox text-lg mr-3" data-key="${key}">☐</span>
+                            <span class="script-checkbox text-lg mr-3" data-key="${key}">${selectedScriptKeys.has(key) ? '☑' : '☐'}</span>
                             <span class="text-sm font-medium flex-1">${script.name} (${lines}行)</span>
                         </div>
                         ${!script.isPredefined ? `<button class="delete-script-btn text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50 ml-2" data-key="${key}">削除</button>` : ''}
@@ -982,16 +1011,13 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                     lines: lines,
                     isPredefined: false
                 };
-                
+
+                const selectedScriptKeys = getSelectedScriptKeys();
+                selectedScriptKeys.add(key);
+
                 saveCustomScripts();
                 allScripts = { ...predefinedScripts, ...customScripts };
-                updateScriptList();
-                
-                // 新しく追加された台本を自動選択
-                const newScriptCheckbox = document.querySelector(`[data-key="${key}"]`);
-                if (newScriptCheckbox) {
-                    newScriptCheckbox.textContent = '☑';
-                }
+                updateScriptList(selectedScriptKeys);
                 
                 updatePreview(); // プレビューを更新
                 
@@ -1032,10 +1058,13 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             function deleteCustomScript(key) {
                 if (confirm('この台本を削除しますか？')) {
+                    const selectedScriptKeys = getSelectedScriptKeys();
+                    selectedScriptKeys.delete(key);
+
                     delete customScripts[key];
                     saveCustomScripts();
                     allScripts = { ...predefinedScripts, ...customScripts };
-                    updateScriptList();
+                    updateScriptList(selectedScriptKeys);
                     updatePreview(); // プレビューを更新
                 }
             }
@@ -1138,10 +1167,9 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             }
 
             function getSelectedScripts() {
-                const selectedKeys = Array.from(document.querySelectorAll('#script-list .script-checkbox'))
-                    .filter(checkbox => checkbox.textContent === '☑')
-                    .map(checkbox => checkbox.getAttribute('data-key'));
-                return selectedKeys.map(key => allScripts[key]).filter(script => script);
+                return Array.from(getSelectedScriptKeys())
+                    .map(key => allScripts[key])
+                    .filter(script => script);
             }
 
             // --- 折りたたみ式エディタ ---
@@ -1320,9 +1348,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             async function checkForResume() {
                 // 選択された台本を取得
-                selectedScripts = Array.from(document.querySelectorAll('#script-list .script-checkbox'))
-                    .filter(checkbox => checkbox.textContent === '☑')
-                    .map(checkbox => checkbox.getAttribute('data-key'));
+                selectedScripts = Array.from(getSelectedScriptKeys());
                 
                 if (selectedScripts.length === 0) {
                     alert('台本を選択してください。');

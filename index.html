@@ -388,6 +388,7 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             // --- State Management ---
             let appState = 'idle';
             let mediaRecorder;
+            let pendingRecordingStart = null;
             let audioChunks = [];
             let currentScriptKey;
             let currentScript;
@@ -1350,7 +1351,6 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 switch (code) {
                     case 'Space':
                         if (['ready', 'reviewing'].includes(appState)) { 
-                            if (appState === 'reviewing') setupForRerecording(); 
                             startRecording(); 
                         }
                         else if (appState === 'recording') stopRecording();
@@ -1442,6 +1442,10 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
 
             function goHome() {
                 try {
+                    if (pendingRecordingStart) {
+                        clearTimeout(pendingRecordingStart.timeoutId);
+                        pendingRecordingStart = null;
+                    }
                     if (audioPlayer) {
                         audioPlayer.pause();
                         audioPlayer.src = '';
@@ -1522,6 +1526,8 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
             }
             
             function startRecording() {
+                const previousState = appState;
+                const previousStatus = statusText.textContent;
                 setState('recording', '録音中...');
                 audioChunks = [];
                 // モノラル録音を確実にするための設定
@@ -1534,15 +1540,31 @@ No.002:明日（あした）は晴（は）れ。,アシタワハレ。"></texta
                 mediaRecorder.addEventListener("stop", handleRecordingStop);
                 
                 // 0.5秒後に録音開始
-                setTimeout(() => {
-                    if (mediaRecorder && mediaRecorder.state === 'inactive') {
-                        mediaRecorder.start();
-                        visualizeRealtime();
-                    }
-                }, 500);
+                pendingRecordingStart = {
+                    previousState,
+                    previousStatus,
+                    timeoutId: setTimeout(() => {
+                        pendingRecordingStart = null;
+                        if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                            mediaRecorder.start();
+                            if (previousState === 'reviewing') {
+                                setupForRerecording();
+                                setState('recording', '録音中...');
+                            }
+                            visualizeRealtime();
+                        }
+                    }, 500)
+                };
             }
 
-            function stopRecording() { 
+            function stopRecording() {
+                if (pendingRecordingStart) {
+                    const { timeoutId, previousState, previousStatus } = pendingRecordingStart;
+                    clearTimeout(timeoutId);
+                    pendingRecordingStart = null;
+                    setState(previousState, previousStatus);
+                    return;
+                }
                 if(mediaRecorder.state !== 'inactive') {
                     // 0.5秒後に録音停止（最後の0.5秒をカット）
                     setTimeout(() => {
